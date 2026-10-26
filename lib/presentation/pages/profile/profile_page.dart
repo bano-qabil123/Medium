@@ -1,234 +1,372 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/helpers.dart';
-import '../../providers/article_provider.dart';
-import '../../providers/auth_provider.dart';
-import '../../widgets/common/app_avatar.dart';
-import '../../widgets/common/app_button.dart';
-import '../../widgets/common/app_loading.dart';
-import '../../widgets/common/app_empty_state.dart';
-import '../../widgets/article/article_card.dart';
-import '../../widgets/layout/main_layout.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:medium_clone/core/theme/app_theme.dart';
+import 'package:medium_clone/core/utils/extensions.dart';
+import 'package:medium_clone/data/models/article_model.dart';
+import 'package:medium_clone/data/models/user_model.dart';
+import 'package:medium_clone/presentation/providers/article_provider.dart';
+import 'package:medium_clone/presentation/providers/auth_provider.dart';
+import 'package:medium_clone/presentation/widgets/common/app_avatar.dart';
+import 'package:medium_clone/presentation/widgets/common/app_loading.dart';
+import 'package:medium_clone/presentation/widgets/common/app_empty_state.dart';
+import 'package:medium_clone/presentation/widgets/common/app_button.dart';
+import 'package:medium_clone/presentation/widgets/common/app_divider.dart';
+import 'package:medium_clone/presentation/widgets/article/article_card.dart';
+import 'package:medium_clone/presentation/widgets/layout/main_layout.dart';
 
-/// Optimized profile page with ListView.builder
-class ProfilePage extends ConsumerWidget {
+class ProfilePage extends ConsumerStatefulWidget {
   final String? username;
-  
+
   const ProfilePage({super.key, this.username});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final currentUser = ref.watch(currentUserProfileProvider).valueOrNull;
-    final isCurrentUser = username == null || 
-        (currentUser != null && currentUser.username == username);
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends ConsumerState<ProfilePage> {
+  @override
+  Widget build(BuildContext context) {
+    final userAsync = ref.watch(currentUserProvider);
     
-    final userId = isCurrentUser && currentUser != null 
-        ? currentUser.id 
-        : username;
-    
-    final articlesAsync = userId != null 
-        ? ref.watch(userArticlesProvider(userId))
-        : const AsyncValue.data([]);
-    
+    return userAsync.when(
+      loading: () => MainLayout(
+        title: 'Profile',
+        child: const Center(child: AppLoading()),
+      ),
+      error: (error, stack) => MainLayout(
+        title: 'Profile',
+        child: AppEmptyStateError(
+          message: error.toString(),
+          onRetry: () => ref.refresh(currentUserProvider),
+        ),
+      ),
+      data: (user) {
+        if (user == null) {
+          return MainLayout(
+            title: 'Profile',
+            child: AppEmptyState(
+              icon: Icons.person_outline,
+              title: 'Not Signed In',
+              message: 'Please sign in to view your profile',
+              action: AppButton(
+                text: 'Sign In',
+                onPressed: () => context.push('/login'),
+              ),
+            ),
+          );
+        }
+
+        return _buildProfileContent(context, user);
+      },
+    );
+  }
+
+  Widget _buildProfileContent(BuildContext context, UserModel user) {
     return MainLayout(
-      key: ValueKey('profile-${username}'),
-      title: isCurrentUser ? 'My Profile' : username ?? 'Profile',
-      showBackButton: !isCurrentUser,
+      title: user.displayName ?? 'Profile',
+      showBackButton: widget.username != null,
       actions: [
-        if (isCurrentUser)
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => context.push('/settings'),
-            splashRadius: 24,
-          ),
+        IconButton(
+          icon: const Icon(Icons.settings_outlined),
+          onPressed: () => context.push('/settings'),
+        ),
       ],
-      floatingActionButton: isCurrentUser 
-          ? FloatingActionButton(
-              onPressed: () => context.push('/article/editor'),
-              child: const Icon(Icons.add),
-            )
-          : null,
       child: CustomScrollView(
         slivers: [
-          // Profile Header with RepaintBoundary
+          // Profile header
           SliverToBoxAdapter(
-            child: RepaintBoundary(
-              child: _buildProfileHeader(context, ref, isCurrentUser, currentUser),
+            child: _ProfileHeader(user: user),
+          ),
+          
+          // Stats
+          SliverToBoxAdapter(
+            child: _ProfileStats(user: user),
+          ),
+          
+          // Bio
+          if (user.bio != null && user.bio!.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppDimensions.paddingMedium,
+                  vertical: AppDimensions.paddingLarge,
+                ),
+                child: Text(
+                  user.bio!,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: AppDivider()),
+          ],
+          
+          // User's articles
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(AppDimensions.paddingMedium),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'My Articles',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  AppButtonSecondary(
+                    text: 'New Article',
+                    onPressed: () => context.push('/article/editor'),
+                    fullWidth: false,
+                  ),
+                ],
+              ),
             ),
           ),
           
-          // Articles Section with ListView.builder
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: articlesAsync.when(
-              loading: () => const Center(child: AppLoading()),
-              error: (error, stack) => AppEmptyStateError(
-                message: error.toString(),
-                onRetry: () => ref.refresh(userArticlesProvider(userId)),
-              ),
-              data: (articles) {
-                if (articles.isEmpty) {
-                  return AppEmptyStateNoArticles(
-                    isCurrentUser: isCurrentUser,
-                    onCreateArticle: () => context.push('/article/editor'),
-                  );
-                }
-                
-                // Use ListView.builder for smooth scrolling
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: articles.length,
-                  itemBuilder: (context, index) {
-                    return RepaintBoundary(
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: ArticleCardCompact(
-                          key: ValueKey(articles[index].id),
-                          article: articles[index],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
+          // Articles list
+          _UserArticlesList(userId: user.id),
         ],
       ),
     );
   }
+}
 
-  Widget _buildProfileHeader(
-    BuildContext context, 
-    WidgetRef ref, 
-    bool isCurrentUser, 
-    dynamic currentUser,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(24),
+class _ProfileHeader extends StatelessWidget {
+  final UserModel user;
+
+  const _ProfileHeader({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
       child: Column(
         children: [
-          // Avatar with RepaintBoundary
-          RepaintBoundary(
-            child: AppAvatarLarge(
-              imageUrl: isCurrentUser && currentUser != null 
-                  ? currentUser.avatarUrl 
-                  : null,
-              name: isCurrentUser && currentUser != null 
-                  ? currentUser.fullName 
-                  : username,
-            ),
+          const SizedBox(height: AppDimensions.spacingMedium),
+          
+          // Avatar
+          AppAvatar(
+            key: ValueKey('profile-avatar-${user.id}'),
+            imageUrl: user.avatarUrl,
+            name: user.displayName,
+            size: AppDimensions.avatarSizeLarge,
           ),
           
-          const SizedBox(height: 16),
+          const SizedBox(height: AppDimensions.spacingMedium),
           
           // Name
           Text(
-            isCurrentUser && currentUser != null 
-                ? currentUser.fullName 
-                : username ?? 'Unknown User',
-            style: AppTypography.headlineMedium.copyWith(
-              color: AppColors.onSurface,
+            user.displayName ?? 'Unknown',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
           
           // Username
-          if (isCurrentUser && currentUser != null && currentUser.username != null)
+          if (user.username != null && user.username!.isNotEmpty) ...[
+            const SizedBox(height: AppDimensions.spacingXSmall),
             Text(
-              '@${currentUser.username}',
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.grey,
+              '@${user.username}',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
+          ],
           
-          const SizedBox(height: 16),
+          const SizedBox(height: AppDimensions.spacingMedium),
           
-          // Bio
-          if (isCurrentUser && currentUser != null && currentUser.bio != null)
-            Text(
-              currentUser.bio!,
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.onSurface,
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          
-          const SizedBox(height: 24),
-          
-          // Stats
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildStat('Articles', isCurrentUser && currentUser != null 
-                  ? currentUser.articlesCount.toString() 
-                  : '0'),
-              const SizedBox(width: 32),
-              _buildStat('Followers', isCurrentUser && currentUser != null 
-                  ? currentUser.followersCount.toString() 
-                  : '0'),
-              const SizedBox(width: 32),
-              _buildStat('Following', isCurrentUser && currentUser != null 
-                  ? currentUser.followingCount.toString() 
-                  : '0'),
-            ],
+          // Edit profile button
+          AppButtonSecondary(
+            text: 'Edit Profile',
+            onPressed: () => context.push('/profile/edit'),
+            fullWidth: false,
+            leadingIcon: const Icon(Icons.edit_outlined, size: AppDimensions.iconSmall),
           ),
           
-          const SizedBox(height: 24),
-          
-          // Follow/Edit Button
-          if (isCurrentUser)
-            AppButton(
-              text: 'Edit Profile',
-              onPressed: () {
-                // TODO: Navigate to edit profile
-              },
-              fullWidth: false,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 32,
-                vertical: 12,
-              ),
-            ),
-          else
-            AppButtonSecondary(
-              text: 'Follow',
-              onPressed: () {
-                // TODO: Follow user
-              },
-              fullWidth: false,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 32,
-                vertical: 12,
-              ),
-            ),
-          
-          const SizedBox(height: 24),
-          const AppDivider(),
+          const SizedBox(height: AppDimensions.spacingLarge),
         ],
       ),
     );
   }
+}
 
-  Widget _buildStat(String label, String value) {
+class _ProfileStats extends StatelessWidget {
+  final UserModel user;
+
+  const _ProfileStats({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    return RepaintBoundary(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppDimensions.paddingMedium),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildStat(context, 'Articles', user.articleCount),
+            _buildStat(context, 'Followers', user.followerCount),
+            _buildStat(context, 'Following', user.followingCount),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStat(BuildContext context, String label, int count) {
     return Column(
       children: [
         Text(
-          Helpers.formatNumber(int.parse(value)),
-          style: AppTypography.headlineSmall.copyWith(
-            color: AppColors.onSurface,
+          count.toString(),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
           ),
         ),
         Text(
           label,
-          style: AppTypography.bodySmall.copyWith(
-            color: AppColors.grey,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
       ],
+    );
+  }
+}
+
+class _UserArticlesList extends ConsumerWidget {
+  final String userId;
+
+  const _UserArticlesList({required this.userId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final articlesAsync = ref.watch(userArticlesProvider(userId));
+
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: AppDimensions.paddingMedium),
+      sliver: articlesAsync.when(
+        loading: () => SliverToBoxAdapter(
+          child: Column(
+            children: List.generate(3, (index) => const Padding(
+              padding: EdgeInsets.only(bottom: AppDimensions.spacingMedium),
+              child: ArticleCardShimmer(),
+            )),
+          ),
+        ),
+        error: (error, stack) => SliverToBoxAdapter(
+          child: AppEmptyStateError(
+            message: error.toString(),
+            onRetry: () => ref.refresh(userArticlesProvider(userId)),
+          ),
+        ),
+        data: (articles) {
+          if (articles.isEmpty) {
+            return SliverToBoxAdapter(
+              child: AppEmptyStateNoArticles(
+                isAuthenticated: true,
+                onCreate: () => context.push('/article/editor'),
+              ),
+            );
+          }
+
+          return SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final article = articles[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: AppDimensions.spacingMedium),
+                  child: ArticleCard(
+                    key: ValueKey('profile-article-${article.id}'),
+                    article: article,
+                    onTap: () => context.push('/article/${article.id}'),
+                    showActions: false,
+                  ),
+                );
+              },
+              childCount: articles.length,
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// Providers
+final userArticlesProvider = FutureProvider.family<List<ArticleModel>, String>((ref, userId) async {
+  final repository = ref.watch(articleRepositoryProvider);
+  return await repository.getArticlesByUser(userId);
+});
+
+// Article Repository extension
+class ArticleRepository {
+  final SupabaseClient _supabase = SupabaseClient.instance;
+
+  Future<List<ArticleModel>> getArticlesByUser(String userId) async {
+    try {
+      final response = await _supabase
+          .from('articles')
+          .select('*, author:users(*)')
+          .eq('author_id', userId)
+          .order('published_at', ascending: false);
+
+      return (response as List)
+          .map((json) => ArticleModel.fromSupabase(json, author: json['author'] != null 
+            ? UserModel.fromSupabase(json['author'] as Map<String, dynamic>) 
+            : null))
+          .toList();
+    } catch (e) {
+      return [];
+    }
+  }
+}
+
+final articleRepositoryProvider = Provider<ArticleRepository>((ref) {
+  return ArticleRepository();
+});
+
+class ArticleCardShimmer extends StatelessWidget {
+  const ArticleCardShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppDimensions.paddingMedium),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            height: 120,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceVariant,
+              borderRadius: BorderRadius.circular(AppDimensions.radiusXSmall),
+            ),
+          ),
+          const SizedBox(height: AppDimensions.spacingSmall),
+          Container(
+            width: double.infinity * 0.8,
+            height: 16,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceVariant,
+              borderRadius: BorderRadius.circular(AppDimensions.radiusXSmall),
+            ),
+          ),
+          const SizedBox(height: AppDimensions.spacingXSmall),
+          Container(
+            width: double.infinity * 0.6,
+            height: 14,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceVariant,
+              borderRadius: BorderRadius.circular(AppDimensions.radiusXSmall),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

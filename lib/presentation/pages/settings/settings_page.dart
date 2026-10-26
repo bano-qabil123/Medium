@@ -1,110 +1,114 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../providers/auth_provider.dart';
-import '../../widgets/common/app_button.dart';
-import '../../widgets/common/app_card.dart';
-import '../../widgets/layout/main_layout.dart';
+import 'package:medium_clone/core/theme/app_theme.dart';
+import 'package:medium_clone/presentation/providers/settings_provider.dart';
+import 'package:medium_clone/presentation/providers/auth_provider.dart';
+import 'package:medium_clone/presentation/widgets/common/app_button.dart';
+import 'package:medium_clone/presentation/widgets/common/app_loading.dart';
+import 'package:medium_clone/presentation/widgets/common/app_divider.dart';
+import 'package:medium_clone/presentation/widgets/layout/main_layout.dart';
 
-/// Optimized settings page with const constructors
-class SettingsPage extends ConsumerWidget {
+class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends ConsumerState<SettingsPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(settingsProvider.notifier).loadSettings();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = ref.watch(currentUserProvider).valueOrNull;
+
     return MainLayout(
-      key: const ValueKey('settings-page'),
       title: 'Settings',
       showBackButton: true,
       child: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppDimensions.paddingMedium),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Profile Section
-            _buildSection(
-              title: 'Profile',
-              children: const [
-                _SettingsListTile(
-                  leading: Icon(Icons.person_outline),
-                  title: 'Edit Profile',
-                ),
-              ],
-            ),
+            // User section
+            if (user != null) ...[
+              _buildUserSection(context, user),
+              const SizedBox(height: AppDimensions.spacingLarge),
+              const AppDivider(),
+              const SizedBox(height: AppDimensions.spacingLarge),
+            ],
+
+            // Appearance section
+            _buildSectionHeader('Appearance'),
+            const SizedBox(height: AppDimensions.spacingSmall),
             
-            // Account Section
-            _buildSection(
-              title: 'Account',
-              children: const [
-                _SettingsListTile(
-                  leading: Icon(Icons.password_outlined),
-                  title: 'Change Password',
-                ),
-                _SettingsListTile(
-                  leading: Icon(Icons.notifications_outlined),
-                  title: 'Notifications',
-                ),
-              ],
+            _buildSettingCard(
+              title: 'Theme',
+              child: _buildThemeSelector(),
             ),
+            const SizedBox(height: AppDimensions.spacingMedium),
             
-            // Appearance Section
-            _buildSection(
-              title: 'Appearance',
-              children: [
-                const _SettingsListTile(
-                  leading: Icon(Icons.dark_mode_outlined),
-                  title: 'Dark Mode',
-                  trailing: _DarkModeToggle(),
-                ),
-                const _SettingsListTile(
-                  leading: Icon(Icons.text_increase_outlined),
-                  title: 'Text Size',
-                ),
-              ],
+            _buildSettingCard(
+              title: 'Font Size',
+              child: _buildFontSizeSlider(),
             ),
+            const SizedBox(height: AppDimensions.spacingMedium),
             
-            // About Section
-            _buildSection(
-              title: 'About',
-              children: const [
-                _SettingsListTile(
-                  leading: Icon(Icons.info_outline),
-                  title: 'About Medium Clone',
-                ),
-                _SettingsListTile(
-                  leading: Icon(Icons.privacy_tip_outlined),
-                  title: 'Privacy Policy',
-                ),
-                _SettingsListTile(
-                  leading: Icon(Icons.description_outlined),
-                  title: 'Terms of Service',
-                ),
-              ],
+            _buildSettingCard(
+              title: 'Font Family',
+              child: _buildFontFamilySelector(),
             ),
+            const SizedBox(height: AppDimensions.spacingMedium),
             
-            // Sign Out
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: AppButtonSecondary(
-                text: 'Sign Out',
-                onPressed: () async {
-                  await ref.read(authControllerProvider.notifier).signOut();
-                  if (context.mounted) {
-                    context.go('/login');
-                  }
-                },
-                fullWidth: true,
+            _buildSettingCard(
+              title: 'Line Height',
+              child: _buildLineHeightSlider(),
+            ),
+            const SizedBox(height: AppDimensions.spacingLarge),
+            
+            // Account section
+            _buildSectionHeader('Account'),
+            const SizedBox(height: AppDimensions.spacingSmall),
+            
+            if (user != null) ...[
+              _buildSettingCard(
+                title: 'Profile',
+                child: _buildProfileButton(),
               ),
-            ),
-            
-            // Version
-            Padding(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: Text(
-                'Version 1.0.0',
-                style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.grey,
-                ),
+              const SizedBox(height: AppDimensions.spacingMedium),
+              
+              _buildSettingCard(
+                title: 'Sign Out',
+                child: _buildSignOutButton(),
               ),
+            ] else ...[
+              _buildSettingCard(
+                title: 'Sign In',
+                child: _buildSignInButton(),
+              ),
+            ],
+            const SizedBox(height: AppDimensions.spacingLarge),
+            
+            // About section
+            _buildSectionHeader('About'),
+            const SizedBox(height: AppDimensions.spacingSmall),
+            
+            _buildSettingCard(
+              title: 'App Version',
+              child: _buildVersionInfo(),
+            ),
+            const SizedBox(height: AppDimensions.spacingMedium),
+            
+            _buildSettingCard(
+              title: 'Open Source',
+              child: _buildOpenSourceInfo(),
             ),
           ],
         ),
@@ -112,83 +116,268 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildSection({required String title, required List<Widget> children}) {
+  Widget _buildUserSection(BuildContext context, dynamic user) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            title,
-            style: AppTypography.titleMedium.copyWith(
-              color: AppColors.onSurface,
-              fontWeight: FontWeight.bold,
-            ),
+        Text(
+          'Signed in as',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
-        AppCard(
-          hasBorder: true,
-          child: Column(
-            children: children,
-          ),
+        const SizedBox(height: AppDimensions.spacingXSmall),
+        Row(
+          children: [
+            // Avatar
+            Container(
+              width: AppDimensions.avatarSizeMedium,
+              height: AppDimensions.avatarSizeMedium,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  user.displayName?.isNotEmpty == true 
+                    ? user.displayName![0].toUpperCase() 
+                    : 'U',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: AppDimensions.spacingMedium),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user.displayName ?? 'User',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    user.email ?? '',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
-}
 
-/// Settings list tile with const constructor
-class _SettingsListTile extends StatelessWidget {
-  final Widget leading;
-  final String title;
-  final Widget? trailing;
-  final VoidCallback? onTap;
-  
-  const _SettingsListTile({
-    super.key,
-    required this.leading,
-    required this.title,
-    this.trailing,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: leading,
-      title: Text(
-        title,
-        style: AppTypography.bodyMedium.copyWith(
-          color: AppColors.onSurface,
-        ),
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+        fontWeight: FontWeight.bold,
       ),
-      trailing: trailing ?? const Icon(Icons.arrow_forward_ios, size: 16),
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 24,
-        vertical: 12,
-      ),
-      minLeadingWidth: 0,
     );
   }
-}
 
-/// Dark mode toggle widget
-class _DarkModeToggle extends ConsumerStatefulWidget {
-  const _DarkModeToggle({super.key});
+  Widget _buildSettingCard({required String title, required Widget child}) {
+    return Card(
+      elevation: AppDimensions.cardElevation,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppDimensions.paddingMedium),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: AppDimensions.spacingSmall),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
 
-  @override
-  ConsumerState<_DarkModeToggle> createState() => _DarkModeToggleState();
-}
+  Widget _buildThemeSelector() {
+    final themeMode = ref.watch(themeModeProvider);
+    final notifier = ref.read(settingsProvider.notifier);
 
-class _DarkModeToggleState extends ConsumerState<_DarkModeToggle> {
-  bool _isDarkMode = false;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        RadioListTile<ThemeMode>(
+          title: const Text('System'),
+          value: ThemeMode.system,
+          groupValue: themeMode,
+          onChanged: (value) => notifier.updateThemeMode(value!),
+          contentPadding: EdgeInsets.zero,
+        ),
+        RadioListTile<ThemeMode>(
+          title: const Text('Light'),
+          value: ThemeMode.light,
+          groupValue: themeMode,
+          onChanged: (value) => notifier.updateThemeMode(value!),
+          contentPadding: EdgeInsets.zero,
+        ),
+        RadioListTile<ThemeMode>(
+          title: const Text('Dark'),
+          value: ThemeMode.dark,
+          groupValue: themeMode,
+          onChanged: (value) => notifier.updateThemeMode(value!),
+          contentPadding: EdgeInsets.zero,
+        ),
+      ],
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return Switch(
-      value: _isDarkMode,
-      onChanged: (value) => setState(() => _isDarkMode = value),
+  Widget _buildFontSizeSlider() {
+    final fontSize = ref.watch(fontSizeProvider);
+    final notifier = ref.read(settingsProvider.notifier);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Slider(
+          value: fontSize,
+          min: 12,
+          max: 24,
+          divisions: 12,
+          label: 'Font Size: ${fontSize.toInt()}',
+          onChanged: (value) => notifier.updateFontSize(value),
+        ),
+        Text(
+          'Current: ${fontSize.toInt()}px',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFontFamilySelector() {
+    final fontFamily = ref.watch(fontFamilyProvider);
+    final notifier = ref.read(settingsProvider.notifier);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        RadioListTile<FontFamily>(
+          title: const Text('Merriweather (Serif)'),
+          subtitle: const Text('Best for reading long articles'),
+          value: FontFamily.merriweather,
+          groupValue: fontFamily,
+          onChanged: (value) => notifier.updateFontFamily(value!),
+          contentPadding: EdgeInsets.zero,
+        ),
+        RadioListTile<FontFamily>(
+          title: const Text('Inter (Sans-Serif)'),
+          subtitle: const Text('Clean and modern'),
+          value: FontFamily.inter,
+          groupValue: fontFamily,
+          onChanged: (value) => notifier.updateFontFamily(value!),
+          contentPadding: EdgeInsets.zero,
+        ),
+        RadioListTile<FontFamily>(
+          title: const Text('System'),
+          subtitle: const Text('Use device default font'),
+          value: FontFamily.system,
+          groupValue: fontFamily,
+          onChanged: (value) => notifier.updateFontFamily(value!),
+          contentPadding: EdgeInsets.zero,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLineHeightSlider() {
+    final lineHeight = ref.watch(lineHeightProvider);
+    final notifier = ref.read(settingsProvider.notifier);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Slider(
+          value: lineHeight,
+          min: 1.2,
+          max: 2.0,
+          divisions: 16,
+          label: 'Line Height: ${lineHeight.toStringAsFixed(1)}',
+          onChanged: (value) => notifier.updateLineHeight(value),
+        ),
+        Text(
+          'Current: ${lineHeight.toStringAsFixed(2)}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfileButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: AppButtonSecondary(
+        text: 'View Profile',
+        onPressed: () => context.push('/profile'),
+      ),
+    );
+  }
+
+  Widget _buildSignOutButton() {
+    final authNotifier = ref.read(authProvider.notifier);
+
+    return SizedBox(
+      width: double.infinity,
+      child: AppButton(
+        text: 'Sign Out',
+        onPressed: () => authNotifier.signOut(),
+        backgroundColor: AppColors.error,
+      ),
+    );
+  }
+
+  Widget _buildSignInButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: AppButton(
+        text: 'Sign In',
+        onPressed: () => context.push('/login'),
+      ),
+    );
+  }
+
+  Widget _buildVersionInfo() {
+    return Text(
+      '1.0.0',
+      style: Theme.of(context).textTheme.bodyMedium,
+    );
+  }
+
+  Widget _buildOpenSourceInfo() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'This app is open source.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: AppDimensions.spacingXSmall),
+        Text(
+          'Built with Flutter and Supabase',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
   }
 }
