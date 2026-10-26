@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   static ThemeData get lightTheme {
@@ -24,9 +25,11 @@ class AppTheme {
         foregroundColor: AppColors.onBackground,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: AppTypography.headlineSmall.copyWith(
-          color: AppColors.onBackground,
+        titleTextStyle: GoogleFonts.merriweather(
+          fontSize: 20,
           fontWeight: FontWeight.w600,
+          color: AppColors.onBackground,
+          height: 1.3,
         ),
       ),
       cardTheme: CardTheme(
@@ -72,8 +75,11 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
           ),
-          textStyle: AppTypography.titleMedium.copyWith(
+          textStyle: GoogleFonts.inter(
+            fontSize: 16,
             fontWeight: FontWeight.w600,
+            height: 1.5,
+            letterSpacing: 0.15,
           ),
         ),
       ),
@@ -88,16 +94,22 @@ class AppTheme {
             borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
           ),
           side: BorderSide(color: AppColors.primary),
-          textStyle: AppTypography.titleMedium.copyWith(
+          textStyle: GoogleFonts.inter(
+            fontSize: 16,
             fontWeight: FontWeight.w600,
+            height: 1.5,
+            letterSpacing: 0.15,
           ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primary,
-          textStyle: AppTypography.titleMedium.copyWith(
+          textStyle: GoogleFonts.inter(
+            fontSize: 16,
             fontWeight: FontWeight.w600,
+            height: 1.5,
+            letterSpacing: 0.15,
           ),
         ),
       ),
@@ -128,21 +140,106 @@ class AppTheme {
         space: 1,
       ),
       textTheme: TextTheme(
-        displayLarge: AppTypography.displayLarge,
-        displayMedium: AppTypography.displayMedium,
-        displaySmall: AppTypography.displaySmall,
-        headlineLarge: AppTypography.headlineLarge,
-        headlineMedium: AppTypography.headlineMedium,
-        headlineSmall: AppTypography.headlineSmall,
-        titleLarge: AppTypography.titleLarge,
-        titleMedium: AppTypography.titleMedium,
-        titleSmall: AppTypography.titleSmall,
-        bodyLarge: AppTypography.bodyLarge,
-        bodyMedium: AppTypography.bodyMedium,
-        bodySmall: AppTypography.bodySmall,
-        labelLarge: AppTypography.labelLarge,
-        labelMedium: AppTypography.labelMedium,
-        labelSmall: AppTypography.labelSmall,
+        displayLarge: GoogleFonts.merriweather(
+          fontSize: 57,
+          fontWeight: FontWeight.w400,
+          height: 64 / 57,
+          letterSpacing: -0.25,
+          color: AppColors.onBackground,
+        ),
+        displayMedium: GoogleFonts.merriweather(
+          fontSize: 45,
+          fontWeight: FontWeight.w400,
+          height: 52 / 45,
+          color: AppColors.onBackground,
+        ),
+        displaySmall: GoogleFonts.merriweather(
+          fontSize: 36,
+          fontWeight: FontWeight.w400,
+          height: 44 / 36,
+          color: AppColors.onBackground,
+        ),
+        headlineLarge: GoogleFonts.merriweather(
+          fontSize: 32,
+          fontWeight: FontWeight.w600,
+          height: 40 / 32,
+          color: AppColors.onBackground,
+        ),
+        headlineMedium: GoogleFonts.merriweather(
+          fontSize: 28,
+          fontWeight: FontWeight.w600,
+          height: 36 / 28,
+          color: AppColors.onBackground,
+        ),
+        headlineSmall: GoogleFonts.merriweather(
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+          height: 32 / 24,
+          color: AppColors.onBackground,
+        ),
+        titleLarge: GoogleFonts.inter(
+          fontSize: 22,
+          fontWeight: FontWeight.w600,
+          height: 28 / 22,
+          letterSpacing: 0.1,
+          color: AppColors.onBackground,
+        ),
+        titleMedium: GoogleFonts.inter(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          height: 24 / 16,
+          letterSpacing: 0.15,
+          color: AppColors.onBackground,
+        ),
+        titleSmall: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          height: 20 / 14,
+          letterSpacing: 0.1,
+          color: AppColors.onBackground,
+        ),
+        bodyLarge: GoogleFonts.merriweather(
+          fontSize: 17,
+          fontWeight: FontWeight.w400,
+          height: 1.65,
+          letterSpacing: 0.5,
+          color: AppColors.onSurface,
+        ),
+        bodyMedium: GoogleFonts.merriweather(
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+          height: 1.6,
+          letterSpacing: 0.25,
+          color: AppColors.onSurface,
+        ),
+        bodySmall: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          height: 20 / 14,
+          letterSpacing: 0.25,
+          color: AppColors.onSurfaceVariant,
+        ),
+        labelLarge: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          height: 20 / 14,
+          letterSpacing: 0.1,
+          color: AppColors.onSurface,
+        ),
+        labelMedium: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          height: 16 / 12,
+          letterSpacing: 0.5,
+          color: AppColors.onSurfaceVariant,
+        ),
+        labelSmall: GoogleFonts.inter(
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+          height: 16 / 10,
+          letterSpacing: 0.5,
+          color: AppColors.onSurfaceVariant,
+        ),
       ),
     );
   }
@@ -170,9 +267,11 @@ class AppTheme {
         foregroundColor: AppColors.onBackgroundDark,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: AppTypography.headlineSmall.copyWith(
-          color: AppColors.onBackgroundDark,
+        titleTextStyle: GoogleFonts.merriweather(
+          fontSize: 20,
           fontWeight: FontWeight.w600,
+          color: AppColors.onBackgroundDark,
+          height: 1.3,
         ),
       ),
       cardTheme: CardTheme(
@@ -221,43 +320,131 @@ class AppTheme {
         ),
       ),
       textTheme: TextTheme(
-        displayLarge: AppTypography.displayLarge,
-        displayMedium: AppTypography.displayMedium,
-        displaySmall: AppTypography.displaySmall,
-        headlineLarge: AppTypography.headlineLarge,
-        headlineMedium: AppTypography.headlineMedium,
-        headlineSmall: AppTypography.headlineSmall,
-        titleLarge: AppTypography.titleLarge,
-        titleMedium: AppTypography.titleMedium,
-        titleSmall: AppTypography.titleSmall,
-        bodyLarge: AppTypography.bodyLarge,
-        bodyMedium: AppTypography.bodyMedium,
-        bodySmall: AppTypography.bodySmall,
-        labelLarge: AppTypography.labelLarge,
-        labelMedium: AppTypography.labelMedium,
-        labelSmall: AppTypography.labelSmall,
+        displayLarge: GoogleFonts.merriweather(
+          fontSize: 57,
+          fontWeight: FontWeight.w400,
+          height: 64 / 57,
+          letterSpacing: -0.25,
+          color: AppColors.onBackgroundDark,
+        ),
+        displayMedium: GoogleFonts.merriweather(
+          fontSize: 45,
+          fontWeight: FontWeight.w400,
+          height: 52 / 45,
+          color: AppColors.onBackgroundDark,
+        ),
+        displaySmall: GoogleFonts.merriweather(
+          fontSize: 36,
+          fontWeight: FontWeight.w400,
+          height: 44 / 36,
+          color: AppColors.onBackgroundDark,
+        ),
+        headlineLarge: GoogleFonts.merriweather(
+          fontSize: 32,
+          fontWeight: FontWeight.w600,
+          height: 40 / 32,
+          color: AppColors.onBackgroundDark,
+        ),
+        headlineMedium: GoogleFonts.merriweather(
+          fontSize: 28,
+          fontWeight: FontWeight.w600,
+          height: 36 / 28,
+          color: AppColors.onBackgroundDark,
+        ),
+        headlineSmall: GoogleFonts.merriweather(
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+          height: 32 / 24,
+          color: AppColors.onBackgroundDark,
+        ),
+        titleLarge: GoogleFonts.inter(
+          fontSize: 22,
+          fontWeight: FontWeight.w600,
+          height: 28 / 22,
+          letterSpacing: 0.1,
+          color: AppColors.onBackgroundDark,
+        ),
+        titleMedium: GoogleFonts.inter(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          height: 24 / 16,
+          letterSpacing: 0.15,
+          color: AppColors.onBackgroundDark,
+        ),
+        titleSmall: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          height: 20 / 14,
+          letterSpacing: 0.1,
+          color: AppColors.onSurfaceDark,
+        ),
+        bodyLarge: GoogleFonts.merriweather(
+          fontSize: 17,
+          fontWeight: FontWeight.w400,
+          height: 1.65,
+          letterSpacing: 0.5,
+          color: AppColors.onSurfaceDark,
+        ),
+        bodyMedium: GoogleFonts.merriweather(
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+          height: 1.6,
+          letterSpacing: 0.25,
+          color: AppColors.onSurfaceDark,
+        ),
+        bodySmall: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          height: 20 / 14,
+          letterSpacing: 0.25,
+          color: AppColors.onSurfaceVariantDark,
+        ),
+        labelLarge: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          height: 20 / 14,
+          letterSpacing: 0.1,
+          color: AppColors.onSurfaceDark,
+        ),
+        labelMedium: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          height: 16 / 12,
+          letterSpacing: 0.5,
+          color: AppColors.onSurfaceVariantDark,
+        ),
+        labelSmall: GoogleFonts.inter(
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+          height: 16 / 10,
+          letterSpacing: 0.5,
+          color: AppColors.onSurfaceVariantDark,
+        ),
       ),
     );
   }
 }
 
 class AppColors {
-  // Primary
+  // Primary - Medium Green
   static const Color primary = Color(0xFF292929);
   static const Color primaryLight = Color(0xFF4A4A4A);
   static const Color primaryDark = Color(0xFF1A1A1A);
   static const Color onPrimary = Color(0xFFFFFFFF);
   
-  // Secondary
+  // Secondary - Accent
   static const Color secondary = Color(0xFF6B6B6B);
   static const Color onSecondary = Color(0xFFFFFFFF);
   
   // Surface
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surfaceDark = Color(0xFF1A1A1A);
+  static const Color surfaceVariant = Color(0xFFF5F5F5);
+  static const Color surfaceVariantDark = Color(0xFF2A2A2A);
   static const Color onSurface = Color(0xFF292929);
   static const Color onSurfaceDark = Color(0xFFFFFFFF);
   static const Color onSurfaceVariant = Color(0xFF6B6B6B);
+  static const Color onSurfaceVariantDark = Color(0xFF9E9E9E);
   
   // Background
   static const Color background = Color(0xFFFFFFFF);
@@ -275,12 +462,15 @@ class AppColors {
   
   // Success
   static const Color success = Color(0xFF388E3C);
+  static const Color successLight = Color(0xFF81C784);
   
   // Warning
   static const Color warning = Color(0xFFF57C00);
+  static const Color warningLight = Color(0xFFFFB74D);
   
   // Info
   static const Color info = Color(0xFF1976D2);
+  static const Color infoLight = Color(0xFF42A5F5);
   
   // Neutral
   static const Color white = Color(0xFFFFFFFF);
@@ -288,123 +478,52 @@ class AppColors {
   static const Color grey = Color(0xFF9E9E9E);
   static const Color greyLight = Color(0xFFE0E0E0);
   static const Color greyDark = Color(0xFF424242);
+  
+  // Claps color
+  static const Color clapsColor = Color(0xFF292929);
+  static const Color clapsColorHighlight = Color(0xFF4A4A4A);
+  
+  // Highlight colors
+  static const List<Color> highlightColors = [
+    Color(0xFFFFD700), // Gold
+    Color(0xFFFF6B6B), // Coral
+    Color(0xFF4ECDC4), // Teal
+    Color(0xFFA05195), // Purple
+    Color(0xFFFFA07A), // Light Salmon
+  ];
 }
 
 class AppTypography {
-  static const String fontFamily = 'Inter';
-  
-  static const TextStyle displayLarge = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 57,
+  // Merriweather for body text (serif)
+  static TextStyle get bodyText => GoogleFonts.merriweather(
+    fontSize: 17,
     fontWeight: FontWeight.w400,
-    height: 64 / 57,
-    letterSpacing: -0.25,
-  );
-  
-  static const TextStyle displayMedium = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 45,
-    fontWeight: FontWeight.w400,
-    height: 52 / 45,
-  );
-  
-  static const TextStyle displaySmall = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 36,
-    fontWeight: FontWeight.w400,
-    height: 44 / 36,
-  );
-  
-  static const TextStyle headlineLarge = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 32,
-    fontWeight: FontWeight.w400,
-    height: 40 / 32,
-  );
-  
-  static const TextStyle headlineMedium = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 28,
-    fontWeight: FontWeight.w400,
-    height: 36 / 28,
-  );
-  
-  static const TextStyle headlineSmall = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 24,
-    fontWeight: FontWeight.w400,
-    height: 32 / 24,
-  );
-  
-  static const TextStyle titleLarge = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 22,
-    fontWeight: FontWeight.w500,
-    height: 28 / 22,
-  );
-  
-  static const TextStyle titleMedium = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 16,
-    fontWeight: FontWeight.w500,
-    height: 24 / 16,
-    letterSpacing: 0.15,
-  );
-  
-  static const TextStyle titleSmall = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 14,
-    fontWeight: FontWeight.w500,
-    height: 20 / 14,
-    letterSpacing: 0.1,
-  );
-  
-  static const TextStyle bodyLarge = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 16,
-    fontWeight: FontWeight.w400,
-    height: 24 / 16,
+    height: 1.65,
     letterSpacing: 0.5,
   );
   
-  static const TextStyle bodyMedium = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 14,
+  static TextStyle get bodyTextDark => GoogleFonts.merriweather(
+    fontSize: 17,
     fontWeight: FontWeight.w400,
-    height: 20 / 14,
+    height: 1.65,
+    letterSpacing: 0.5,
+    color: AppColors.onSurfaceDark,
+  );
+  
+  // Inter for UI elements (sans-serif)
+  static TextStyle get uiText => GoogleFonts.inter(
+    fontSize: 16,
+    fontWeight: FontWeight.w400,
+    height: 1.5,
     letterSpacing: 0.25,
   );
   
-  static const TextStyle bodySmall = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 12,
+  static TextStyle get uiTextDark => GoogleFonts.inter(
+    fontSize: 16,
     fontWeight: FontWeight.w400,
-    height: 16 / 12,
-    letterSpacing: 0.4,
-  );
-  
-  static const TextStyle labelLarge = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 14,
-    fontWeight: FontWeight.w500,
-    height: 20 / 14,
-    letterSpacing: 0.1,
-  );
-  
-  static const TextStyle labelMedium = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 12,
-    fontWeight: FontWeight.w500,
-    height: 16 / 12,
-    letterSpacing: 0.5,
-  );
-  
-  static const TextStyle labelSmall = TextStyle(
-    fontFamily: fontFamily,
-    fontSize: 10,
-    fontWeight: FontWeight.w500,
-    height: 16 / 10,
-    letterSpacing: 0.5,
+    height: 1.5,
+    letterSpacing: 0.25,
+    color: AppColors.onSurfaceDark,
   );
 }
 
@@ -483,4 +602,15 @@ class AppDimensions {
   static const double chipHeight = 32;
   static const double chipPadding = 8;
   static const double chipRadius = 16;
+  
+  // Article content max width for readability
+  static const double maxContentWidth = 650;
+  static const double maxContentWidthTablet = 800;
+  
+  // Claps button
+  static const double clapsButtonSize = 40;
+  static const double clapsIconSize = 24;
+  
+  // Highlight
+  static const double highlightMenuWidth = 200;
 }

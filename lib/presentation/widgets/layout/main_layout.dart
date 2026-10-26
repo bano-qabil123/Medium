@@ -11,6 +11,7 @@ class MainLayout extends ConsumerWidget {
   final Widget child;
   final bool showBackButton;
   final bool showSearch;
+  final bool showAppBar;
   final VoidCallback? onSearchPressed;
   final VoidCallback? onNotificationPressed;
   final Widget? floatingActionButton;
@@ -23,6 +24,7 @@ class MainLayout extends ConsumerWidget {
     required this.child,
     this.showBackButton = false,
     this.showSearch = false,
+    this.showAppBar = true,
     this.onSearchPressed,
     this.onNotificationPressed,
     this.floatingActionButton,
@@ -35,14 +37,14 @@ class MainLayout extends ConsumerWidget {
     final isAuthenticated = ref.watch(isAuthenticatedProvider);
     
     return Scaffold(
-      appBar: AppBarWidget(
+      appBar: showAppBar ? AppBarWidget(
         title: title,
         showBackButton: showBackButton,
         showSearch: showSearch,
         onSearchPressed: onSearchPressed,
         onNotificationPressed: onNotificationPressed,
         actions: actions,
-      ),
+      ) : null,
       body: child,
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomNavigationBar ?? (

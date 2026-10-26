@@ -3,20 +3,24 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/extensions.dart';
-import '../../../core/utils/helpers.dart';
-import '../../../data/models/article_model.dart';
-import '../../providers/article_provider.dart';
-import '../../providers/auth_provider.dart';
-import '../../widgets/common/app_avatar.dart';
-import '../../widgets/common/app_button.dart';
-import '../../widgets/common/app_loading.dart';
-import '../../widgets/common/app_chip.dart';
-import '../../widgets/common/app_empty_state.dart';
-import '../../widgets/common/app_divider.dart';
-import '../../widgets/layout/main_layout.dart';
-import '../../widgets/comment/comment_section.dart';
+import 'package:medium_clone/core/theme/app_theme.dart';
+import 'package:medium_clone/core/utils/extensions.dart';
+import 'package:medium_clone/core/utils/helpers.dart';
+import 'package:medium_clone/data/models/article_model.dart';
+import 'package:medium_clone/presentation/providers/article_provider.dart';
+import 'package:medium_clone/presentation/providers/auth_provider.dart';
+import 'package:medium_clone/presentation/providers/clap_provider.dart';
+import 'package:medium_clone/presentation/providers/bookmark_provider.dart';
+import 'package:medium_clone/presentation/widgets/common/app_avatar.dart';
+import 'package:medium_clone/presentation/widgets/common/app_button.dart';
+import 'package:medium_clone/presentation/widgets/common/app_loading.dart';
+import 'package:medium_clone/presentation/widgets/common/app_chip.dart';
+import 'package:medium_clone/presentation/widgets/common/app_empty_state.dart';
+import 'package:medium_clone/presentation/widgets/common/app_divider.dart';
+import 'package:medium_clone/presentation/widgets/layout/main_layout.dart';
+import 'package:medium_clone/presentation/widgets/comment/comment_section.dart';
+import 'package:medium_clone/presentation/widgets/article/clap_button.dart';
+import 'package:medium_clone/presentation/widgets/article/bookmark_button.dart';
 
 class ArticleDetailPage extends ConsumerStatefulWidget {
   final String articleId;
@@ -28,13 +32,38 @@ class ArticleDetailPage extends ConsumerStatefulWidget {
 }
 
 class _ArticleDetailPageState extends ConsumerState<ArticleDetailPage> {
+  final ScrollController _scrollController = ScrollController();
+  bool _showAppBar = true;
+
   @override
   void initState() {
     super.initState();
-    // Pre-load article data
+    _scrollController.addListener(_handleScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(articleDetailProvider(widget.articleId).future);
+      // Load clap and bookmark status
+      ref.read(clapProvider(widget.articleId));
+      ref.read(articleBookmarkProvider(widget.articleId));
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_handleScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _handleScroll() {
+    if (_scrollController.position.userScrollDirection == ScrollDirection.reverse) {
+      if (_showAppBar) {
+        setState(() => _showAppBar = false);
+      }
+    } else if (_scrollController.position.userScrollDirection == ScrollDirection.forward) {
+      if (!_showAppBar) {
+        setState(() => _showAppBar = true);
+      }
+    }
   }
 
   @override
@@ -44,80 +73,98 @@ class _ArticleDetailPageState extends ConsumerState<ArticleDetailPage> {
     
     return MainLayout(
       showBackButton: true,
-      actions: const [
+      showAppBar: _showAppBar,
+      actions: [
         IconButton(
-          icon: Icon(Icons.more_vert),
-          onPressed: null, // TODO: Show article menu
+          key: const ValueKey('article-menu-button'),
+          icon: const Icon(Icons.more_vert),
+          onPressed: () => _showArticleMenu(context),
         ),
       ],
       floatingActionButton: currentUser != null 
-          ? FloatingActionButton(
-              onPressed: () {
-                // TODO: Show comment input
-              },
-              child: const Icon(Icons.edit),
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingBookmarkButton(
+                  key: ValueKey('bookmark-${widget.articleId}'),
+                  articleId: widget.articleId,
+                  size: 48,
+                ),
+                const SizedBox(width: 16),
+                FloatingClapButton(
+                  key: ValueKey('clap-${widget.articleId}'),
+                  articleId: widget.articleId,
+                  size: 56,
+                ),
+              ],
             )
-          : null,
-      child: CustomScrollView(
-        // Use const constructors for Sliver widgets
-        slivers: [
-          // Article Header - Use SliverToBoxAdapter for non-scrolling content
-          SliverToBoxAdapter(
-            child: articleAsync.when(
-              loading: () => const Center(child: AppLoading()),
-              error: (error, stack) => AppEmptyStateError(
-                message: error.toString(),
-                onRetry: () => ref.refresh(articleDetailProvider(widget.articleId)),
-              ),
-              data: (article) => _buildArticleHeader(context, article),
+          : FloatingClapButton(
+              key: ValueKey('clap-${widget.articleId}'),
+              articleId: widget.articleId,
+              size: 56,
             ),
-          ),
-          
-          // Article Content
-          SliverToBoxAdapter(
-            child: articleAsync.when(
-              loading: () => const SizedBox(height: 400),
-              error: (error, stack) => const SizedBox(),
-              data: (article) => _buildArticleContent(context, article),
-            ),
-          ),
-          
-          // Comments Section
-          SliverToBoxAdapter(
-            child: articleAsync.when(
-              loading: () => const SizedBox(),
-              error: (error, stack) => const SizedBox(),
-              data: (article) => CommentSection(articleId: article.id),
-            ),
-          ),
-        ],
+      child: articleAsync.when(
+        loading: () => const Center(child: AppLoading()),
+        error: (error, stack) => AppEmptyStateError(
+          message: error.toString(),
+          onRetry: () => ref.refresh(articleDetailProvider(widget.articleId)),
+        ),
+        data: (article) => _buildContent(context, article),
       ),
     );
   }
 
+  Widget _buildContent(BuildContext context, ArticleModel article) {
+    return CustomScrollView(
+      controller: _scrollController,
+      slivers: [
+        // Article Header
+        SliverToBoxAdapter(
+          child: _buildArticleHeader(context, article),
+        ),
+        
+        // Article Content
+        SliverToBoxAdapter(
+          child: _buildArticleContent(context, article),
+        ),
+        
+        // Comments Section
+        SliverToBoxAdapter(
+          child: CommentSection(articleId: article.id),
+        ),
+        
+        // Bottom padding
+        const SliverToBoxAdapter(
+          child: SizedBox(height: 100),
+        ),
+      ],
+    );
+  }
+
   Widget _buildArticleHeader(BuildContext context, ArticleModel article) {
-    // Use RepaintBoundary to isolate header repaints
     return RepaintBoundary(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Cover Image with CachedNetworkImage
+          // Cover Image
           if (article.hasCoverImage) ...[
             _buildCoverImage(article.coverImage),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppDimensions.spacingMedium),
           ],
           
           // Article Info
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppDimensions.paddingMedium,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Tags
                 if (article.tags.isNotEmpty) ...[
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                    spacing: AppDimensions.spacingSmall,
+                    runSpacing: AppDimensions.spacingSmall,
                     children: article.tags
                         .map((tag) => AppChip(
                               key: ValueKey('tag-$tag'),
@@ -127,34 +174,34 @@ class _ArticleDetailPageState extends ConsumerState<ArticleDetailPage> {
                             ))
                         .toList(),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppDimensions.spacingMedium),
                 ],
                 
-                // Title
+                // Title with premium typography
                 Text(
                   article.title,
-                  style: AppTypography.headlineLarge.copyWith(
-                    color: AppColors.onSurface,
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 
-                const SizedBox(height: 16),
+                const SizedBox(height: AppDimensions.spacingMedium),
                 
                 // Author Info
                 _buildAuthorInfo(context, article),
                 
-                const SizedBox(height: 24),
+                const SizedBox(height: AppDimensions.spacingLarge),
                 
-                // Stats
-                _buildStats(article),
+                // Stats with new metrics
+                _buildStats(context, article),
                 
-                const SizedBox(height: 24),
+                const SizedBox(height: AppDimensions.spacingLarge),
                 
                 // Actions
                 _buildActions(context, article),
                 
-                const SizedBox(height: 16),
+                const SizedBox(height: AppDimensions.spacingMedium),
                 const AppDivider(),
               ],
             ),
@@ -166,21 +213,28 @@ class _ArticleDetailPageState extends ConsumerState<ArticleDetailPage> {
 
   Widget _buildCoverImage(String imageUrl) {
     return CachedNetworkImage(
+      key: ValueKey('cover-$imageUrl'),
       imageUrl: imageUrl,
       width: double.infinity,
-      height: 250,
+      height: AppDimensions.coverImageHeight,
       fit: BoxFit.cover,
       placeholder: (context, url) => Container(
         width: double.infinity,
-        height: 250,
-        color: AppColors.greyLight,
-        child: const Center(child: AppLoadingSmall()),
+        height: AppDimensions.coverImageHeight,
+        color: Theme.of(context).colorScheme.surfaceVariant,
+        child: const Center(child: AppLoading()),
       ),
       errorWidget: (context, url, error) => Container(
         width: double.infinity,
-        height: 250,
-        color: AppColors.greyLight,
-        child: const Center(child: Icon(Icons.error, color: AppColors.grey)),
+        height: AppDimensions.coverImageHeight,
+        color: Theme.of(context).colorScheme.surfaceVariant,
+        child: Center(
+          child: Icon(
+            Icons.image_not_supported,
+            size: AppDimensions.iconXLarge,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
       ),
       fadeInImage: true,
       fadeInDuration: const Duration(milliseconds: 300),
@@ -197,25 +251,25 @@ class _ArticleDetailPageState extends ConsumerState<ArticleDetailPage> {
             key: ValueKey('author-${article.authorId}'),
             imageUrl: article.author?.avatarUrl,
             name: article.author?.fullName,
-            size: 48,
+            size: AppDimensions.avatarSizeMedium,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppDimensions.spacingMedium),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 article.author?.fullName ?? 'Unknown Author',
-                style: AppTypography.bodyLarge.copyWith(
-                  color: AppColors.onSurface,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
                 article.publishedAt?.format() ?? article.createdAt?.format() ?? '',
-                style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.grey,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -224,46 +278,71 @@ class _ArticleDetailPageState extends ConsumerState<ArticleDetailPage> {
         const Spacer(),
         // Follow button
         AppButtonSecondary(
+          key: ValueKey('follow-${article.authorId}'),
           text: 'Follow',
           onPressed: () {
             // TODO: Follow author
           },
           fullWidth: false,
           padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 8,
+            horizontal: AppDimensions.paddingMedium,
+            vertical: AppDimensions.paddingSmall,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildStats(ArticleModel article) {
+  Widget _buildStats(BuildContext context, ArticleModel article) {
     return Row(
       children: [
-        _buildStat(Icons.access_time, '${article.readTimeMinutes} min read'),
-        const SizedBox(width: 24),
-        _buildStat(Icons.remove_red_eye_outlined, Helpers.formatShortNumber(article.views)),
-        const SizedBox(width: 24),
-        _buildStat(Icons.favorite_outline, Helpers.formatShortNumber(article.likesCount)),
+        _buildStat(
+          context,
+          Icons.access_time,
+          '${article.readTimeMinutes} min read',
+        ),
+        const SizedBox(width: AppDimensions.spacingLarge),
+        _buildStat(
+          context,
+          Icons.remove_red_eye_outlined,
+          Helpers.formatShortNumber(article.views),
+        ),
+        const SizedBox(width: AppDimensions.spacingLarge),
+        // New claps count
+        Consumer(
+          builder: (context, ref, child) {
+            final clapCount = ref.watch(clapCountProvider(article.id));
+            return _buildStat(
+              context,
+              Icons.favorite_outline,
+              Helpers.formatShortNumber(clapCount),
+            );
+          },
+        ),
+        const SizedBox(width: AppDimensions.spacingLarge),
+        _buildStat(
+          context,
+          Icons.comment_outlined,
+          Helpers.formatShortNumber(article.commentsCount),
+        ),
       ],
     );
   }
 
-  Widget _buildStat(IconData icon, String text) {
+  Widget _buildStat(BuildContext context, IconData icon, String text) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
           icon,
-          size: 16,
-          color: AppColors.grey,
+          size: AppDimensions.iconSmall,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: AppDimensions.spacingXSmall),
         Text(
           text,
-          style: AppTypography.bodySmall.copyWith(
-            color: AppColors.grey,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
       ],
@@ -273,182 +352,181 @@ class _ArticleDetailPageState extends ConsumerState<ArticleDetailPage> {
   Widget _buildActions(BuildContext context, ArticleModel article) {
     return Row(
       children: [
-        _buildActionButton(
-          icon: article.isLiked ? Icons.favorite : Icons.favorite_outline,
-          label: article.isLiked ? 'Liked' : 'Like',
-          count: article.likesCount,
-          isActive: article.isLiked,
-          onPressed: () {
-            ref.read(articleControllerProvider.notifier).likeArticle(article.id);
+        // Clap button
+        Consumer(
+          builder: (context, ref, child) {
+            final hasClapped = ref.watch(hasClappedProvider(article.id));
+            final clapCount = ref.watch(clapCountProvider(article.id));
+            
+            return ClapButton(
+              key: ValueKey('clap-btn-${article.id}'),
+              articleId: article.id,
+              showCount: true,
+              size: AppDimensions.buttonHeightMedium,
+              iconColor: Theme.of(context).colorScheme.onSurfaceVariant,
+              activeIconColor: AppColors.clapsColorHighlight,
+              countColor: Theme.of(context).colorScheme.onSurface,
+            );
           },
         ),
-        const SizedBox(width: 24),
-        _buildActionButton(
-          icon: article.isBookmarked ? Icons.bookmark : Icons.bookmark_outline,
-          label: article.isBookmarked ? 'Saved' : 'Save',
-          isActive: article.isBookmarked,
-          onPressed: () {
-            ref.read(articleControllerProvider.notifier).bookmarkArticle(article.id);
-          },
+        const SizedBox(width: AppDimensions.spacingMedium),
+        
+        // Bookmark button
+        BookmarkButton(
+          key: ValueKey('bookmark-btn-${article.id}'),
+          articleId: article.id,
+          showText: false,
+          iconSize: AppDimensions.iconMedium,
+          iconColor: Theme.of(context).colorScheme.onSurfaceVariant,
+          activeIconColor: AppColors.primary,
         ),
-        const SizedBox(width: 24),
-        _buildActionButton(
-          icon: Icons.share_outlined,
-          label: 'Share',
-          onPressed: () {
-            // TODO: Share article
-          },
+        const SizedBox(width: AppDimensions.spacingMedium),
+        
+        // Share button
+        IconButton(
+          key: const ValueKey('share-button'),
+          icon: Icon(
+            Icons.share_outlined,
+            size: AppDimensions.iconMedium,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          onPressed: () => _shareArticle(article),
+          style: IconButton.styleFrom(
+            padding: const EdgeInsets.all(AppDimensions.paddingSmall),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    int? count,
-    bool isActive = false,
-    VoidCallback? onPressed,
-  }) {
-    return TextButton.icon(
-      onPressed: onPressed,
-      icon: Icon(
-        icon,
-        color: isActive ? AppColors.primary : AppColors.grey,
-        size: 16,
-      ),
-      label: Text(
-        label,
-        style: AppTypography.bodySmall.copyWith(
-          color: isActive ? AppColors.primary : AppColors.grey,
-        ),
-      ),
-      style: TextButton.styleFrom(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: 8,
-        ),
-      ),
-    );
-  }
-
   Widget _buildArticleContent(BuildContext context, ArticleModel article) {
-    // Use RepaintBoundary to isolate content repaints
     return RepaintBoundary(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Excerpt
-            if (article.excerpt != null) ...[
-              Text(
-                article.excerpt!,
-                style: AppTypography.bodyLarge.copyWith(
-                  color: AppColors.onSurface,
-                  fontStyle: FontStyle.italic,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: AppDimensions.maxContentWidth,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppDimensions.paddingMedium,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: AppDimensions.spacingLarge),
+              
+              // Excerpt
+              if (article.excerpt != null) ...[
+                Text(
+                  article.excerpt!,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-            ],
-            
-            // Content with Markdown
-            _buildMarkdownContent(article.content),
-            
-            const SizedBox(height: 32),
-            
-            // Article Footer
-            Column(
-              children: [
-                const AppDivider(),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppButtonSecondary(
-                        text: 'Like',
-                        onPressed: () {
-                          ref.read(articleControllerProvider.notifier).likeArticle(article.id);
-                        },
-                        leadingIcon: Icon(
-                          article.isLiked ? Icons.favorite : Icons.favorite_outline,
-                          color: article.isLiked ? AppColors.error : AppColors.primary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: AppButton(
-                        text: 'Follow',
-                        onPressed: () {
-                          // TODO: Follow author
-                        },
-                      ),
-                    ),
-                  ],
-                ),
+                const SizedBox(height: AppDimensions.spacingLarge),
               ],
-            ),
-            
-            const SizedBox(height: 48),
-          ],
+              
+              // Content with Markdown and premium typography
+              _buildMarkdownContent(context, article.content),
+              
+              const SizedBox(height: AppDimensions.spacingXXLarge),
+              
+              // Article Footer
+              _buildArticleFooter(context, article),
+              
+              const SizedBox(height: AppDimensions.spacingXXLarge),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildMarkdownContent(String content) {
+  Widget _buildMarkdownContent(BuildContext context, String content) {
     return MarkdownBody(
       data: content,
       styleSheet: MarkdownStyleSheet(
-        h1: AppTypography.headlineLarge.copyWith(
-          color: AppColors.onSurface,
+        h1: Theme.of(context).textTheme.headlineLarge?.copyWith(
+          color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.bold,
-        ),
-        h2: AppTypography.headlineMedium.copyWith(
-          color: AppColors.onSurface,
+          height: 1.4,
+        ) ?? const TextStyle(),
+        h2: Theme.of(context).textTheme.headlineMedium?.copyWith(
+          color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.bold,
-        ),
-        h3: AppTypography.headlineSmall.copyWith(
-          color: AppColors.onSurface,
+          height: 1.45,
+        ) ?? const TextStyle(),
+        h3: Theme.of(context).textTheme.headlineSmall?.copyWith(
+          color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.bold,
-        ),
-        p: AppTypography.bodyLarge.copyWith(
-          color: AppColors.onSurface,
-          height: 1.6,
-        ),
-        strong: AppTypography.bodyLarge.copyWith(
-          color: AppColors.onSurface,
+          height: 1.5,
+        ) ?? const TextStyle(),
+        h4: Theme.of(context).textTheme.titleLarge?.copyWith(
+          color: Theme.of(context).colorScheme.onSurface,
+          fontWeight: FontWeight.w600,
+          height: 1.5,
+        ) ?? const TextStyle(),
+        h5: Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: Theme.of(context).colorScheme.onSurface,
+          fontWeight: FontWeight.w600,
+          height: 1.5,
+        ) ?? const TextStyle(),
+        h6: Theme.of(context).textTheme.titleSmall?.copyWith(
+          color: Theme.of(context).colorScheme.onSurface,
+          fontWeight: FontWeight.w600,
+          height: 1.5,
+        ) ?? const TextStyle(),
+        p: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          color: Theme.of(context).colorScheme.onSurface,
+          height: 1.65,
+        ) ?? const TextStyle(),
+        strong: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.bold,
-        ),
-        em: AppTypography.bodyLarge.copyWith(
-          color: AppColors.onSurface,
+        ) ?? const TextStyle(),
+        em: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          color: Theme.of(context).colorScheme.onSurface,
           fontStyle: FontStyle.italic,
-        ),
-        code: AppTypography.bodyMedium.copyWith(
-          color: AppColors.onSurface,
-          backgroundColor: AppColors.greyLight,
+        ) ?? const TextStyle(),
+        code: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: Theme.of(context).colorScheme.onSurface,
+          backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
           fontFamily: 'monospace',
-        ),
-        codeblockPadding: const EdgeInsets.all(8),
+        ) ?? const TextStyle(),
+        codeblockPadding: const EdgeInsets.all(AppDimensions.paddingMedium),
         codeblockDecoration: BoxDecoration(
-          color: AppColors.greyLight,
-          borderRadius: BorderRadius.circular(8),
+          color: Theme.of(context).colorScheme.surfaceVariant,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
         ),
-        blockquote: AppTypography.bodyLarge.copyWith(
-          color: AppColors.onSurface,
-          borderLeft: BorderSide(color: AppColors.primary, width: 4),
-          padding: const EdgeInsets.all(16),
+        blockquote: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          fontStyle: FontStyle.italic,
+        ) ?? const TextStyle(),
+        blockquotePadding: const EdgeInsets.all(AppDimensions.paddingMedium),
+        blockquoteDecoration: BoxDecoration(
+          border: Border.left(
+            color: Theme.of(context).colorScheme.primary,
+            width: 4,
+          ),
         ),
-        blockquotePadding: const EdgeInsets.all(16),
-        link: AppTypography.bodyLarge.copyWith(
-          color: AppColors.primary,
+        link: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          color: Theme.of(context).colorScheme.primary,
           decoration: TextDecoration.underline,
+        ) ?? const TextStyle(),
+        listItem: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          color: Theme.of(context).colorScheme.onSurface,
+          height: 1.65,
+        ) ?? const TextStyle(),
+        horizontalRule: BorderSide(
+          color: Theme.of(context).colorScheme.outlineVariant,
+          width: 1,
         ),
-        listItem: AppTypography.bodyLarge.copyWith(
-          color: AppColors.onSurface,
-          height: 1.6,
+        tableBorder: TableBorder.all(
+          color: Theme.of(context).colorScheme.outlineVariant,
+          width: 1,
         ),
+        tableColumnWidth: const IntrinsicColumnWidth(),
+        tablePadding: const EdgeInsets.all(AppDimensions.paddingSmall),
       ),
       onTapLink: (text, href, title) {
         if (href != null) {
@@ -457,23 +535,29 @@ class _ArticleDetailPageState extends ConsumerState<ArticleDetailPage> {
       },
       imageBuilder: (uri, title, alt) {
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: const EdgeInsets.symmetric(vertical: AppDimensions.spacingLarge),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
             child: CachedNetworkImage(
+              key: ValueKey('markdown-img-${uri.toString()}'),
               imageUrl: uri.toString(),
               fit: BoxFit.cover,
               placeholder: (context, url) => Container(
                 width: double.infinity,
                 height: 200,
-                color: AppColors.greyLight,
-                child: const Center(child: AppLoadingSmall()),
+                color: Theme.of(context).colorScheme.surfaceVariant,
+                child: const Center(child: AppLoading()),
               ),
               errorWidget: (context, url, error) => Container(
                 width: double.infinity,
                 height: 200,
-                color: AppColors.greyLight,
-                child: const Center(child: Icon(Icons.error, color: AppColors.grey)),
+                color: Theme.of(context).colorScheme.surfaceVariant,
+                child: Center(
+                  child: Icon(
+                    Icons.error,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ),
               fadeInImage: true,
               fadeInDuration: const Duration(milliseconds: 300),
@@ -482,5 +566,94 @@ class _ArticleDetailPageState extends ConsumerState<ArticleDetailPage> {
         );
       },
     );
+  }
+
+  Widget _buildArticleFooter(BuildContext context, ArticleModel article) {
+    return Column(
+      children: [
+        const AppDivider(),
+        const SizedBox(height: AppDimensions.spacingLarge),
+        Row(
+          children: [
+            Expanded(
+              child: AppButtonSecondary(
+                key: const ValueKey('like-button'),
+                text: 'Like',
+                onPressed: () {
+                  ref.read(articleControllerProvider.notifier).likeArticle(article.id);
+                },
+                leadingIcon: Icon(
+                  article.isLiked ? Icons.favorite : Icons.favorite_outline,
+                  color: article.isLiked ? AppColors.error : AppColors.primary,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppDimensions.spacingMedium),
+            Expanded(
+              child: AppButton(
+                key: const ValueKey('follow-button'),
+                text: 'Follow',
+                onPressed: () {
+                  // TODO: Follow author
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  void _showArticleMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.share_outlined),
+              title: const Text('Share'),
+              onTap: () {
+                context.pop();
+                // TODO: Share article
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.report_outlined),
+              title: const Text('Report'),
+              onTap: () {
+                context.pop();
+                // TODO: Report article
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.copy_outlined),
+              title: const Text('Copy link'),
+              onTap: () {
+                context.pop();
+                // TODO: Copy link
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _shareArticle(ArticleModel article) {
+    // TODO: Implement share functionality
+    // Use share_plus package
+  }
+}
+
+class Random {
+  final _random = DateTime.now().millisecondsSinceEpoch;
+  
+  double nextDouble() {
+    return ((_random + 1) % 1000) / 1000;
+  }
+  
+  int nextInt(int max) {
+    return (_random % max).abs();
   }
 }
