@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart' as fs;
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:medium_clone/data/models/user_model.dart';
 
@@ -18,9 +17,9 @@ class ArticleModel with _$ArticleModel {
     UserModel? author,
     @Default('draft') String status,
     @Default('public') String visibility,
-    @fs.Timestamp() DateTime? publishedAt,
-    @fs.Timestamp() DateTime? updatedAt,
-    @fs.Timestamp() DateTime? createdAt,
+    DateTime? publishedAt,
+    DateTime? updatedAt,
+    DateTime? createdAt,
     @Default(0) int readTimeMinutes,
     @Default(0) int views,
     @Default(0) int clapsCount,

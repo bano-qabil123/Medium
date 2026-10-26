@@ -46,7 +46,7 @@ class ArticleRepository {
       if (onlyFollowing && userId != null) {
         // Get articles from users that the current user follows
         final followsResponse = await _supabaseClient.client
-            .from(ApiConstants.followsTable)
+            .from(ApiConstants.userFollowsTable)
             .select('following_id')
             .eq('follower_id', userId)
             .execute();
@@ -87,7 +87,7 @@ class ArticleRepository {
         // Check likes
         if (articleIds.isNotEmpty) {
           final likesResponse = await _supabaseClient.client
-              .from(ApiConstants.likesTable)
+              .from(ApiConstants.clapsTable)
               .select('article_id')
               .eq('user_id', userId)
               .in_('article_id', articleIds)
@@ -99,7 +99,7 @@ class ArticleRepository {
                 .toSet();
             
             for (final article in articles) {
-              article.copyWith(isLiked: likedArticleIds.contains(article.id));
+              article.copyWith(isClapped: likedArticleIds.contains(article.id));
             }
           }
         }
@@ -164,7 +164,7 @@ class ArticleRepository {
       // Check if user has liked/bookmarked the article
       if (userId != null) {
         final likesResponse = await _supabaseClient.client
-            .from(ApiConstants.likesTable)
+            .from(ApiConstants.clapsTable)
             .select('id')
             .eq('user_id', userId)
             .eq('article_id', articleId)
@@ -180,7 +180,7 @@ class ArticleRepository {
             .execute();
         
         return article.copyWith(
-          isLiked: likesResponse.data != null,
+          isClapped: likesResponse.data != null,
           isBookmarked: bookmarksResponse.data != null,
         );
       }
@@ -224,7 +224,7 @@ class ArticleRepository {
       // Check if user has liked/bookmarked the article
       if (userId != null) {
         final likesResponse = await _supabaseClient.client
-            .from(ApiConstants.likesTable)
+            .from(ApiConstants.clapsTable)
             .select('id')
             .eq('user_id', userId)
             .eq('article_id', article.id)
@@ -240,7 +240,7 @@ class ArticleRepository {
             .execute();
         
         return article.copyWith(
-          isLiked: likesResponse.data != null,
+          isClapped: likesResponse.data != null,
           isBookmarked: bookmarksResponse.data != null,
         );
       }
@@ -459,7 +459,7 @@ class ArticleRepository {
       
       // Check if already liked
       final existingLike = await _supabaseClient.client
-          .from(ApiConstants.likesTable)
+          .from(ApiConstants.clapsTable)
           .select('id')
           .eq('user_id', userId)
           .eq('article_id', articleId)
@@ -469,7 +469,7 @@ class ArticleRepository {
       if (existingLike.data != null) {
         // Unlike
         await _supabaseClient.client
-            .from(ApiConstants.likesTable)
+            .from(ApiConstants.clapsTable)
             .delete()
             .eq('id', existingLike.data['id'])
             .execute();
@@ -477,7 +477,7 @@ class ArticleRepository {
       } else {
         // Like
         await _supabaseClient.client
-            .from(ApiConstants.likesTable)
+            .from(ApiConstants.clapsTable)
             .insert({
               'user_id': userId,
               'article_id': articleId,
@@ -620,7 +620,7 @@ class ArticleRepository {
         
         if (articleIds.isNotEmpty) {
           final likesResponse = await _supabaseClient.client
-              .from(ApiConstants.likesTable)
+              .from(ApiConstants.clapsTable)
               .select('article_id')
               .eq('user_id', currentUserId)
               .in_('article_id', articleIds)
@@ -642,7 +642,7 @@ class ArticleRepository {
                 .toSet();
             
             return articles.map((article) => article.copyWith(
-              isLiked: likedArticleIds.contains(article.id),
+              isClapped: likedArticleIds.contains(article.id),
               isBookmarked: bookmarkedArticleIds.contains(article.id),
             )).toList();
           }

@@ -110,7 +110,7 @@ class UserRepository {
       
       // Check if already following
       final existingFollow = await _supabaseClient.client
-          .from(ApiConstants.followsTable)
+          .from(ApiConstants.userFollowsTable)
           .select('id')
           .eq('follower_id', currentUserId)
           .eq('following_id', userId)
@@ -120,7 +120,7 @@ class UserRepository {
       if (existingFollow.data != null) {
         // Unfollow
         await _supabaseClient.client
-            .from(ApiConstants.followsTable)
+            .from(ApiConstants.userFollowsTable)
             .delete()
             .eq('id', existingFollow.data['id'])
             .execute();
@@ -143,7 +143,7 @@ class UserRepository {
       } else {
         // Follow
         await _supabaseClient.client
-            .from(ApiConstants.followsTable)
+            .from(ApiConstants.userFollowsTable)
             .insert({
               'follower_id': currentUserId,
               'following_id': userId,
@@ -180,7 +180,7 @@ class UserRepository {
       }
       
       final response = await _supabaseClient.client
-          .from(ApiConstants.followsTable)
+          .from(ApiConstants.userFollowsTable)
           .select('id')
           .eq('follower_id', currentUserId)
           .eq('following_id', userId)
@@ -201,7 +201,7 @@ class UserRepository {
   }) async {
     try {
       final response = await _supabaseClient.client
-          .from(ApiConstants.followsTable)
+          .from(ApiConstants.userFollowsTable)
           .select('${ApiConstants.profilesTable}(*)')
           .eq('following_id', userId)
           .limit(limit)
@@ -236,7 +236,7 @@ class UserRepository {
       }
       
       final response = await _supabaseClient.client
-          .from(ApiConstants.followsTable)
+          .from(ApiConstants.userFollowsTable)
           .select('${ApiConstants.profilesTable}(*)')
           .eq('follower_id', currentUserId)
           .limit(limit)
@@ -267,14 +267,14 @@ class UserRepository {
       
       // Get follower count
       final followersResponse = await _supabaseClient.client
-          .from(ApiConstants.followsTable)
+          .from(ApiConstants.userFollowsTable)
           .select('id', const FetchOptions(count: CountOption.exact))
           .eq('following_id', userId)
           .execute();
       
       // Get following count
       final followingResponse = await _supabaseClient.client
-          .from(ApiConstants.followsTable)
+          .from(ApiConstants.userFollowsTable)
           .select('id', const FetchOptions(count: CountOption.exact))
           .eq('follower_id', userId)
           .execute();

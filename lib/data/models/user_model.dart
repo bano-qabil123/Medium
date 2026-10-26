@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart' as fs;
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'user_model.freezed.dart';
@@ -18,8 +17,8 @@ class UserModel with _$UserModel {
     @Default(0) int followersCount,
     @Default(0) int followingCount,
     @Default(0) int articlesCount,
-    @fs.Timestamp() DateTime? createdAt,
-    @fs.Timestamp() DateTime? updatedAt,
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) = _UserModel;
 
   factory UserModel.fromJson(Map<String, dynamic> json) =>

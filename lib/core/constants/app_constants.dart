@@ -3,8 +3,8 @@ class AppConstants {
   static const String appVersion = '1.0.0';
   
   // Supabase
-  static const String supabaseUrl = String.fromEnvironment('SUPABASE_URL');
-  static const String supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+  static const String supabaseUrl = String.fromEnvironment('SUPABASE_URL', defaultValue: 'https://xbixwtzyfbardoujghjc.supabase.co');
+  static const String supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: 'sb_publishable_Ilk5gVSFujURGniIssrD6w_CGbAdRYW');
   
   // Storage buckets
   static const String avatarsBucket = 'avatars';
