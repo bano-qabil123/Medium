@@ -50,25 +50,25 @@ class CommentRepository {
           ))
           .toList();
       
-      // Check if user has liked each comment
+      // Check if user has clapped each comment
       if (userId != null) {
         final commentIds = comments.map((c) => c.id).toList();
         
         if (commentIds.isNotEmpty) {
-          final likesResponse = await _supabaseClient.client
-              .from('comment_likes')
+          final clapsResponse = await _supabaseClient.client
+              .from(ApiConstants.clapsTable)
               .select('comment_id')
               .eq('user_id', userId)
               .in_('comment_id', commentIds)
               .execute();
           
-          if (likesResponse.error == null) {
-            final likedCommentIds = (likesResponse.data as List<dynamic>? ?? [])
-                .map((like) => like['comment_id'] as String)
+          if (clapsResponse.error == null) {
+            final clappedCommentIds = (clapsResponse.data as List<dynamic>? ?? [])
+                .map((clap) => clap['comment_id'] as String)
                 .toSet();
             
             return comments.map((comment) => comment.copyWith(
-              isLiked: likedCommentIds.contains(comment.id),
+              isClapped: clappedCommentIds.contains(comment.id),
             )).toList();
           }
         }
@@ -264,8 +264,8 @@ class CommentRepository {
     }
   }
   
-  /// Like comment
-  Future<bool> likeComment(String commentId) async {
+  /// Clap comment
+  Future<bool> clapComment(String commentId) async {
     try {
       final userId = _supabaseClient.currentUser?.id;
       if (userId == null) {
@@ -275,27 +275,27 @@ class CommentRepository {
         );
       }
       
-      // Check if already liked
-      final existingLike = await _supabaseClient.client
-          .from('comment_likes')
+      // Check if already clapped
+      final existingClap = await _supabaseClient.client
+          .from(ApiConstants.clapsTable)
           .select('id')
           .eq('user_id', userId)
           .eq('comment_id', commentId)
           .maybeSingle()
           .execute();
       
-      if (existingLike.data != null) {
-        // Unlike
+      if (existingClap.data != null) {
+        // Remove clap
         await _supabaseClient.client
-            .from('comment_likes')
+            .from(ApiConstants.clapsTable)
             .delete()
-            .eq('id', existingLike.data['id'])
+            .eq('id', existingClap.data['id'])
             .execute();
         return false;
       } else {
-        // Like
+        // Add clap
         await _supabaseClient.client
-            .from('comment_likes')
+            .from(ApiConstants.clapsTable)
             .insert({
               'user_id': userId,
               'comment_id': commentId,

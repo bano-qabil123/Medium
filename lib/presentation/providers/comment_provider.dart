@@ -134,13 +134,13 @@ class CommentController extends StateNotifier<AsyncValue<CommentModel?>> {
     }
   }
   
-  Future<void> likeComment(String commentId) async {
+  Future<void> clapComment(String commentId) async {
     try {
       final currentState = state.valueOrNull;
       if (currentState == null) return;
       
-      final isLiked = await _commentRepository.likeComment(commentId);
-      state = AsyncValue.data(currentState.copyWith(isLiked: isLiked));
+      final isClapped = await _commentRepository.clapComment(commentId);
+      state = AsyncValue.data(currentState.copyWith(isClapped: isClapped));
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
       rethrow;

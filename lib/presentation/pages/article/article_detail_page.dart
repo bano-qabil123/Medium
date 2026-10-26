@@ -18,7 +18,7 @@ import 'package:medium_clone/presentation/widgets/common/app_chip.dart';
 import 'package:medium_clone/presentation/widgets/common/app_empty_state.dart';
 import 'package:medium_clone/presentation/widgets/common/app_divider.dart';
 import 'package:medium_clone/presentation/widgets/layout/main_layout.dart';
-import 'package:medium_clone/presentation/widgets/comment/comment_section.dart';
+
 import 'package:medium_clone/presentation/widgets/article/clap_button.dart';
 import 'package:medium_clone/presentation/widgets/article/bookmark_button.dart';
 
@@ -130,7 +130,52 @@ class _ArticleDetailPageState extends ConsumerState<ArticleDetailPage> {
         
         // Comments Section
         SliverToBoxAdapter(
-          child: CommentSection(articleId: article.id),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const AppDivider(),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppDimensions.paddingMedium,
+                  vertical: AppDimensions.spacingMedium,
+                ),
+                child: Text(
+                  'Comments (${article.commentsCount})',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppDimensions.spacingSmall),
+              // Navigation to comments page
+              GestureDetector(
+                onTap: () => context.push('/articles/${article.id}/comments'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.paddingMedium,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'View all comments',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const AppDivider(),
+            ],
+          ),
         ),
         
         // Bottom padding

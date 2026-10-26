@@ -9,6 +9,7 @@ import 'package:medium_clone/presentation/pages/article/article_detail_page.dart
 import 'package:medium_clone/presentation/pages/article/article_editor_page.dart';
 import 'package:medium_clone/presentation/pages/profile/profile_page.dart';
 import 'package:medium_clone/presentation/pages/settings/settings_page.dart';
+import 'package:medium_clone/presentation/pages/comments/comments_page.dart';
 import 'package:medium_clone/presentation/providers/auth_provider.dart';
 
 // Route names
@@ -22,6 +23,7 @@ class AppRoutes {
   static const String profile = '/profile/:username';
   static const String myProfile = '/profile';
   static const String settings = '/settings';
+  static const String comments = '/articles/:articleId/comments';
   
   static String getArticleDetail(String id) => '/article/$id';
   static String getEditArticle(String id) => '/article/$id/edit';
@@ -72,6 +74,14 @@ class RouterNotifier extends ChangeNotifier {
               builder: (context, state) {
                 final id = state.pathParams['id']!;
                 return ArticleEditorPage(articleId: id);
+              },
+            ),
+            // Comments
+            GoRoute(
+              path: 'comments',
+              builder: (context, state) {
+                final articleId = state.pathParams['articleId']!;
+                return CommentsPage(articleId: articleId);
               },
             ),
           ],
