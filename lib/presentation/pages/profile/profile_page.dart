@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:medium_clone/core/theme/app_theme.dart';
-import 'package:medium_clone/core/utils/helpers.dart';
-import 'package:medium_clone/presentation/providers/article_provider.dart';
-import 'package:medium_clone/presentation/providers/auth_provider.dart';
-import 'package:medium_clone/presentation/widgets/common/app_avatar.dart';
-import 'package:medium_clone/presentation/widgets/common/app_button.dart';
-import 'package:medium_clone/presentation/widgets/common/app_loading.dart';
-import 'package:medium_clone/presentation/widgets/common/app_empty_state.dart';
-import 'package:medium_clone/presentation/widgets/article/article_card.dart';
-import 'package:medium_clone/presentation/widgets/layout/main_layout.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/helpers.dart';
+import '../../providers/article_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../widgets/common/app_avatar.dart';
+import '../../widgets/common/app_button.dart';
+import '../../widgets/common/app_loading.dart';
+import '../../widgets/common/app_empty_state.dart';
+import '../../widgets/article/article_card.dart';
+import '../../widgets/layout/main_layout.dart';
 
+/// Optimized profile page with ListView.builder
 class ProfilePage extends ConsumerWidget {
   final String? username;
   
@@ -22,7 +24,16 @@ class ProfilePage extends ConsumerWidget {
     final isCurrentUser = username == null || 
         (currentUser != null && currentUser.username == username);
     
+    final userId = isCurrentUser && currentUser != null 
+        ? currentUser.id 
+        : username;
+    
+    final articlesAsync = userId != null 
+        ? ref.watch(userArticlesProvider(userId))
+        : const AsyncValue.data([]);
+    
     return MainLayout(
+      key: ValueKey('profile-${username}'),
       title: isCurrentUser ? 'My Profile' : username ?? 'Profile',
       showBackButton: !isCurrentUser,
       actions: [
@@ -30,6 +41,7 @@ class ProfilePage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => context.push('/settings'),
+            splashRadius: 24,
           ),
       ],
       floatingActionButton: isCurrentUser 
@@ -40,14 +52,48 @@ class ProfilePage extends ConsumerWidget {
           : null,
       child: CustomScrollView(
         slivers: [
-          // Profile Header
+          // Profile Header with RepaintBoundary
           SliverToBoxAdapter(
-            child: _buildProfileHeader(context, ref, isCurrentUser, currentUser),
+            child: RepaintBoundary(
+              child: _buildProfileHeader(context, ref, isCurrentUser, currentUser),
+            ),
           ),
           
-          // Articles
-          SliverToBoxAdapter(
-            child: _buildArticlesSection(context, ref, isCurrentUser, currentUser),
+          // Articles Section with ListView.builder
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: articlesAsync.when(
+              loading: () => const Center(child: AppLoading()),
+              error: (error, stack) => AppEmptyStateError(
+                message: error.toString(),
+                onRetry: () => ref.refresh(userArticlesProvider(userId)),
+              ),
+              data: (articles) {
+                if (articles.isEmpty) {
+                  return AppEmptyStateNoArticles(
+                    isCurrentUser: isCurrentUser,
+                    onCreateArticle: () => context.push('/article/editor'),
+                  );
+                }
+                
+                // Use ListView.builder for smooth scrolling
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: articles.length,
+                  itemBuilder: (context, index) {
+                    return RepaintBoundary(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: ArticleCardCompact(
+                          key: ValueKey(articles[index].id),
+                          article: articles[index],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -61,20 +107,22 @@ class ProfilePage extends ConsumerWidget {
     dynamic currentUser,
   ) {
     return Container(
-      padding: const EdgeInsets.all(AppDimensions.paddingLarge),
+      padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          // Avatar
-          AppAvatarLarge(
-            imageUrl: isCurrentUser && currentUser != null 
-                ? currentUser.avatarUrl 
-                : null,
-            name: isCurrentUser && currentUser != null 
-                ? currentUser.fullName 
-                : username,
+          // Avatar with RepaintBoundary
+          RepaintBoundary(
+            child: AppAvatarLarge(
+              imageUrl: isCurrentUser && currentUser != null 
+                  ? currentUser.avatarUrl 
+                  : null,
+              name: isCurrentUser && currentUser != null 
+                  ? currentUser.fullName 
+                  : username,
+            ),
           ),
           
-          const SizedBox(height: AppDimensions.spacingMedium),
+          const SizedBox(height: 16),
           
           // Name
           Text(
@@ -96,7 +144,7 @@ class ProfilePage extends ConsumerWidget {
               ),
             ),
           
-          const SizedBox(height: AppDimensions.spacingMedium),
+          const SizedBox(height: 16),
           
           // Bio
           if (isCurrentUser && currentUser != null && currentUser.bio != null)
@@ -109,7 +157,7 @@ class ProfilePage extends ConsumerWidget {
               textAlign: TextAlign.center,
             ),
           
-          const SizedBox(height: AppDimensions.spacingLarge),
+          const SizedBox(height: 24),
           
           // Stats
           Row(
@@ -118,18 +166,18 @@ class ProfilePage extends ConsumerWidget {
               _buildStat('Articles', isCurrentUser && currentUser != null 
                   ? currentUser.articlesCount.toString() 
                   : '0'),
-              const SizedBox(width: AppDimensions.spacingXLarge),
+              const SizedBox(width: 32),
               _buildStat('Followers', isCurrentUser && currentUser != null 
                   ? currentUser.followersCount.toString() 
                   : '0'),
-              const SizedBox(width: AppDimensions.spacingXLarge),
+              const SizedBox(width: 32),
               _buildStat('Following', isCurrentUser && currentUser != null 
                   ? currentUser.followingCount.toString() 
                   : '0'),
             ],
           ),
           
-          const SizedBox(height: AppDimensions.spacingLarge),
+          const SizedBox(height: 24),
           
           // Follow/Edit Button
           if (isCurrentUser)
@@ -140,8 +188,8 @@ class ProfilePage extends ConsumerWidget {
               },
               fullWidth: false,
               padding: const EdgeInsets.symmetric(
-                horizontal: AppDimensions.paddingXLarge,
-                vertical: AppDimensions.paddingMedium,
+                horizontal: 32,
+                vertical: 12,
               ),
             ),
           else
@@ -152,106 +200,15 @@ class ProfilePage extends ConsumerWidget {
               },
               fullWidth: false,
               padding: const EdgeInsets.symmetric(
-                horizontal: AppDimensions.paddingXLarge,
-                vertical: AppDimensions.paddingMedium,
+                horizontal: 32,
+                vertical: 12,
               ),
             ),
           
-          const SizedBox(height: AppDimensions.spacingLarge),
+          const SizedBox(height: 24),
           const AppDivider(),
         ],
       ),
-    );
-  }
-
-  Widget _buildArticlesSection(
-    BuildContext context, 
-    WidgetRef ref, 
-    bool isCurrentUser, 
-    dynamic currentUser,
-  ) {
-    final userId = isCurrentUser && currentUser != null 
-        ? currentUser.id 
-        : username;
-    
-    final articlesAsync = userId != null 
-        ? ref.watch(userArticlesProvider(userId))
-        : const AsyncValue.data([]);
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Section Header
-        Padding(
-          padding: const EdgeInsets.all(AppDimensions.paddingLarge),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                isCurrentUser ? 'My Articles' : 'Articles',
-                style: AppTypography.headlineSmall.copyWith(
-                  color: AppColors.onSurface,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              if (isCurrentUser)
-                TextButton(
-                  onPressed: () {
-                    // TODO: Filter articles (drafts, published, etc.)
-                  },
-                  child: Row(
-                    children: [
-                      Text(
-                        'Filter',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(width: AppDimensions.spacingXSmall),
-                      const Icon(
-                        Icons.filter_list,
-                        size: AppDimensions.iconXSmall,
-                        color: AppColors.primary,
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
-        
-        // Articles List
-        articlesAsync.when(
-          loading: () => const Padding(
-            padding: EdgeInsets.all(AppDimensions.paddingLarge),
-            child: AppLoading(),
-          ),
-          error: (error, stack) => AppEmptyStateError(
-            message: error.toString(),
-            onRetry: () => ref.refresh(userArticlesProvider(userId)),
-          ),
-          data: (articles) {
-            if (articles.isEmpty) {
-              return AppEmptyStateNoArticles(
-                isCurrentUser: isCurrentUser,
-                onCreateArticle: () => context.push('/article/editor'),
-              );
-            }
-            
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppDimensions.paddingLarge),
-              child: Column(
-                children: [
-                  ...articles.map((article) => Padding(
-                        padding: const EdgeInsets.only(bottom: AppDimensions.spacingMedium),
-                        child: ArticleCardCompact(article: article),
-                      )),
-                ],
-              ),
-            );
-          },
-        ),
-      ],
     );
   }
 

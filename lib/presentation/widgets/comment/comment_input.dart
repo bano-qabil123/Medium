@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:medium_clone/core/theme/app_theme.dart';
-import 'package:medium_clone/core/utils/validators.dart';
-import 'package:medium_clone/presentation/providers/comment_provider.dart';
-import 'package:medium_clone/presentation/providers/auth_provider.dart';
-import 'package:medium_clone/presentation/widgets/common/app_avatar.dart';
-import 'package:medium_clone/presentation/widgets/common/app_button.dart';
-import 'package:medium_clone/presentation/widgets/common/app_text_field.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/validators.dart';
+import '../../providers/comment_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../common/app_avatar.dart';
+import '../common/app_button.dart';
+import '../common/app_text_field.dart';
 
+/// Optimized comment input with proper state management
 class CommentInput extends ConsumerStatefulWidget {
   final String? articleId;
   final String? parentId;
@@ -75,19 +76,19 @@ class _CommentInputState extends ConsumerState<CommentInput> {
     
     if (currentUser == null) {
       return Container(
-        padding: const EdgeInsets.all(AppDimensions.paddingMedium),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
-          border: BorderSide(color: AppColors.border),
+          borderRadius: BorderRadius.circular(12),
+          border: BorderSide(color: AppColors.border, width: 1),
         ),
         child: Row(
           children: [
-            AppAvatarSmall(
+            const AppAvatarSmall(
               imageUrl: null,
               name: 'Guest',
             ),
-            const SizedBox(width: AppDimensions.spacingSmall),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 'Sign in to comment',
@@ -101,8 +102,8 @@ class _CommentInputState extends ConsumerState<CommentInput> {
               onPressed: () => context.push('/login'),
               fullWidth: false,
               padding: const EdgeInsets.symmetric(
-                horizontal: AppDimensions.paddingMedium,
-                vertical: AppDimensions.paddingSmall,
+                horizontal: 16,
+                vertical: 8,
               ),
             ),
           ],
@@ -113,10 +114,10 @@ class _CommentInputState extends ConsumerState<CommentInput> {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
-        border: BorderSide(color: AppColors.border),
+        borderRadius: BorderRadius.circular(12),
+        border: BorderSide(color: AppColors.border, width: 1),
       ),
-      padding: const EdgeInsets.all(AppDimensions.paddingMedium),
+      padding: const EdgeInsets.all(16),
       child: Form(
         key: _formKey,
         child: Row(
@@ -127,7 +128,7 @@ class _CommentInputState extends ConsumerState<CommentInput> {
               imageUrl: currentUser.avatarUrl,
               name: currentUser.fullName,
             ),
-            const SizedBox(width: AppDimensions.spacingSmall),
+            const SizedBox(width: 12),
             
             // Comment Input
             Expanded(
@@ -141,12 +142,12 @@ class _CommentInputState extends ConsumerState<CommentInput> {
                     validator: (value) => Validators.validateComment(value),
                     autofocus: false,
                     contentPadding: const EdgeInsets.symmetric(
-                      vertical: AppDimensions.paddingSmall,
+                      vertical: 8,
                     ),
                   ),
                   
                   if (_errorMessage != null) ...[
-                    const SizedBox(height: AppDimensions.spacingXSmall),
+                    const SizedBox(height: 4),
                     Text(
                       _errorMessage!,
                       style: AppTypography.bodySmall.copyWith(
@@ -159,14 +160,14 @@ class _CommentInputState extends ConsumerState<CommentInput> {
             ),
             
             // Post Button
-            const SizedBox(width: AppDimensions.spacingSmall),
+            const SizedBox(width: 8),
             AppButtonIcon(
               icon: _isLoading 
                   ? const AppLoadingSmall(color: Colors.white)
                   : const Icon(Icons.send, color: Colors.white),
               onPressed: _isLoading ? null : _handlePostComment,
               fullWidth: false,
-              padding: const EdgeInsets.all(AppDimensions.paddingSmall),
+              padding: const EdgeInsets.all(8),
             ),
           ],
         ),

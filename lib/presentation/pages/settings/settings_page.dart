@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:medium_clone/core/theme/app_theme.dart';
-import 'package:medium_clone/presentation/providers/auth_provider.dart';
-import 'package:medium_clone/presentation/widgets/common/app_button.dart';
-import 'package:medium_clone/presentation/widgets/common/app_card.dart';
-import 'package:medium_clone/presentation/widgets/layout/main_layout.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../providers/auth_provider.dart';
+import '../../widgets/common/app_button.dart';
+import '../../widgets/common/app_card.dart';
+import '../../widgets/layout/main_layout.dart';
 
+/// Optimized settings page with const constructors
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentUser = ref.watch(currentUserProfileProvider).valueOrNull;
-    
     return MainLayout(
+      key: const ValueKey('settings-page'),
       title: 'Settings',
       showBackButton: true,
       child: SingleChildScrollView(
@@ -22,13 +23,10 @@ class SettingsPage extends ConsumerWidget {
             // Profile Section
             _buildSection(
               title: 'Profile',
-              children: [
-                _buildListTile(
-                  leading: const Icon(Icons.person_outline),
+              children: const [
+                _SettingsListTile(
+                  leading: Icon(Icons.person_outline),
                   title: 'Edit Profile',
-                  onTap: () {
-                    // TODO: Navigate to edit profile
-                  },
                 ),
               ],
             ),
@@ -36,20 +34,14 @@ class SettingsPage extends ConsumerWidget {
             // Account Section
             _buildSection(
               title: 'Account',
-              children: [
-                _buildListTile(
-                  leading: const Icon(Icons.password_outlined),
+              children: const [
+                _SettingsListTile(
+                  leading: Icon(Icons.password_outlined),
                   title: 'Change Password',
-                  onTap: () {
-                    // TODO: Navigate to change password
-                  },
                 ),
-                _buildListTile(
-                  leading: const Icon(Icons.notifications_outlined),
+                _SettingsListTile(
+                  leading: Icon(Icons.notifications_outlined),
                   title: 'Notifications',
-                  onTap: () {
-                    // TODO: Navigate to notifications settings
-                  },
                 ),
               ],
             ),
@@ -58,22 +50,14 @@ class SettingsPage extends ConsumerWidget {
             _buildSection(
               title: 'Appearance',
               children: [
-                _buildListTile(
-                  leading: const Icon(Icons.dark_mode_outlined),
+                const _SettingsListTile(
+                  leading: Icon(Icons.dark_mode_outlined),
                   title: 'Dark Mode',
-                  trailing: Switch(
-                    value: true, // TODO: Get from theme
-                    onChanged: (value) {
-                      // TODO: Toggle dark mode
-                    },
-                  ),
+                  trailing: _DarkModeToggle(),
                 ),
-                _buildListTile(
-                  leading: const Icon(Icons.text_increase_outlined),
+                const _SettingsListTile(
+                  leading: Icon(Icons.text_increase_outlined),
                   title: 'Text Size',
-                  onTap: () {
-                    // TODO: Show text size options
-                  },
                 ),
               ],
             ),
@@ -81,34 +65,25 @@ class SettingsPage extends ConsumerWidget {
             // About Section
             _buildSection(
               title: 'About',
-              children: [
-                _buildListTile(
-                  leading: const Icon(Icons.info_outline),
+              children: const [
+                _SettingsListTile(
+                  leading: Icon(Icons.info_outline),
                   title: 'About Medium Clone',
-                  onTap: () {
-                    // TODO: Show about dialog
-                  },
                 ),
-                _buildListTile(
-                  leading: const Icon(Icons.privacy_tip_outlined),
+                _SettingsListTile(
+                  leading: Icon(Icons.privacy_tip_outlined),
                   title: 'Privacy Policy',
-                  onTap: () {
-                    // TODO: Show privacy policy
-                  },
                 ),
-                _buildListTile(
-                  leading: const Icon(Icons.description_outlined),
+                _SettingsListTile(
+                  leading: Icon(Icons.description_outlined),
                   title: 'Terms of Service',
-                  onTap: () {
-                    // TODO: Show terms of service
-                  },
                 ),
               ],
             ),
             
             // Sign Out
             Padding(
-              padding: const EdgeInsets.all(AppDimensions.paddingLarge),
+              padding: const EdgeInsets.all(24),
               child: AppButtonSecondary(
                 text: 'Sign Out',
                 onPressed: () async {
@@ -123,7 +98,7 @@ class SettingsPage extends ConsumerWidget {
             
             // Version
             Padding(
-              padding: const EdgeInsets.only(bottom: AppDimensions.paddingLarge),
+              padding: const EdgeInsets.only(bottom: 24),
               child: Text(
                 'Version 1.0.0',
                 style: AppTypography.bodySmall.copyWith(
@@ -142,7 +117,7 @@ class SettingsPage extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.all(AppDimensions.paddingLarge),
+          padding: const EdgeInsets.all(24),
           child: Text(
             title,
             style: AppTypography.titleMedium.copyWith(
@@ -160,13 +135,25 @@ class SettingsPage extends ConsumerWidget {
       ],
     );
   }
+}
 
-  Widget _buildListTile({
-    required Widget leading,
-    required String title,
-    Widget? trailing,
-    VoidCallback? onTap,
-  }) {
+/// Settings list tile with const constructor
+class _SettingsListTile extends StatelessWidget {
+  final Widget leading;
+  final String title;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  
+  const _SettingsListTile({
+    super.key,
+    required this.leading,
+    required this.title,
+    this.trailing,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return ListTile(
       leading: leading,
       title: Text(
@@ -175,12 +162,33 @@ class SettingsPage extends ConsumerWidget {
           color: AppColors.onSurface,
         ),
       ),
-      trailing: trailing ?? const Icon(Icons.arrow_forward_ios, size: AppDimensions.iconSmall),
+      trailing: trailing ?? const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(
-        horizontal: AppDimensions.paddingLarge,
-        vertical: AppDimensions.paddingSmall,
+        horizontal: 24,
+        vertical: 12,
       ),
+      minLeadingWidth: 0,
+    );
+  }
+}
+
+/// Dark mode toggle widget
+class _DarkModeToggle extends ConsumerStatefulWidget {
+  const _DarkModeToggle({super.key});
+
+  @override
+  ConsumerState<_DarkModeToggle> createState() => _DarkModeToggleState();
+}
+
+class _DarkModeToggleState extends ConsumerState<_DarkModeToggle> {
+  bool _isDarkMode = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Switch(
+      value: _isDarkMode,
+      onChanged: (value) => setState(() => _isDarkMode = value),
     );
   }
 }

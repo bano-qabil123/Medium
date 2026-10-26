@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:medium_clone/core/theme/app_theme.dart';
-import 'package:medium_clone/core/utils/validators.dart';
-import 'package:medium_clone/data/models/article_model.dart';
-import 'package:medium_clone/presentation/providers/article_provider.dart';
-import 'package:medium_clone/presentation/widgets/common/app_button.dart';
-import 'package:medium_clone/presentation/widgets/common/app_text_field.dart';
-import 'package:medium_clone/presentation/widgets/common/app_loading.dart';
-import 'package:medium_clone/presentation/widgets/layout/main_layout.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/validators.dart';
+import '../../providers/article_provider.dart';
+import '../../widgets/common/app_button.dart';
+import '../../widgets/common/app_text_field.dart';
+import '../../widgets/common/app_loading.dart';
+import '../../widgets/layout/main_layout.dart';
 
+/// Optimized article editor with proper state management
 class ArticleEditorPage extends ConsumerStatefulWidget {
   final String? articleId;
   
@@ -23,7 +23,7 @@ class ArticleEditorPage extends ConsumerStatefulWidget {
 class _ArticleEditorPageState extends ConsumerState<ArticleEditorPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
-  final _quillController = QuillController.basic();
+  late QuillController _quillController;
   
   bool _isLoading = false;
   String? _errorMessage;
@@ -32,6 +32,7 @@ class _ArticleEditorPageState extends ConsumerState<ArticleEditorPage> {
   @override
   void initState() {
     super.initState();
+    _quillController = QuillController.basic();
     _loadArticle();
   }
 
@@ -53,9 +54,7 @@ class _ArticleEditorPageState extends ConsumerState<ArticleEditorPage> {
           _quillController.document = Document.fromJson(article.content);
         });
       } catch (e) {
-        setState(() {
-          _errorMessage = e.toString();
-        });
+        setState(() => _errorMessage = e.toString());
       } finally {
         setState(() => _isLoading = false);
       }
@@ -97,9 +96,7 @@ class _ArticleEditorPageState extends ConsumerState<ArticleEditorPage> {
         context.go('/');
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString().replaceAll('Exception:', '').trim();
-      });
+      setState(() => _errorMessage = e.toString().replaceAll('Exception:', '').trim());
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -138,9 +135,7 @@ class _ArticleEditorPageState extends ConsumerState<ArticleEditorPage> {
         context.go('/');
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString().replaceAll('Exception:', '').trim();
-      });
+      setState(() => _errorMessage = e.toString().replaceAll('Exception:', '').trim());
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -151,6 +146,7 @@ class _ArticleEditorPageState extends ConsumerState<ArticleEditorPage> {
   @override
   Widget build(BuildContext context) {
     return MainLayout(
+      key: ValueKey('editor-${widget.articleId}'),
       title: widget.articleId != null ? 'Edit Article' : 'New Article',
       showBackButton: true,
       actions: [
@@ -169,12 +165,13 @@ class _ArticleEditorPageState extends ConsumerState<ArticleEditorPage> {
       ],
       child: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(AppDimensions.paddingMedium),
+          padding: const EdgeInsets.all(16),
           child: Form(
             key: _formKey,
             child: Column(
               children: [
-                // Title
+                // Title - Use const padding
+                const SizedBox(height: 8),
                 AppTextField(
                   controller: _titleController,
                   labelText: 'Title',
@@ -184,31 +181,49 @@ class _ArticleEditorPageState extends ConsumerState<ArticleEditorPage> {
                   textInputAction: TextInputAction.next,
                 ),
                 
-                const SizedBox(height: AppDimensions.spacingMedium),
+                const SizedBox(height: 16),
                 
-                // Cover Image (placeholder for now)
-                Container(
-                  width: double.infinity,
-                  height: AppDimensions.coverImageHeight,
-                  decoration: BoxDecoration(
-                    color: AppColors.greyLight,
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
-                    border: BorderSide(color: AppColors.border),
-                  ),
-                  child: Center(
+                // Cover Image placeholder
+                _buildCoverImagePlaceholder(context),
+                
+                const SizedBox(height: 24),
+                
+                // Editor with RepaintBoundary
+                RepaintBoundary(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: BorderSide(color: AppColors.border, width: 1),
+                    ),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.image_outlined,
-                          size: AppDimensions.iconLarge,
-                          color: AppColors.grey,
-                        ),
-                        const SizedBox(height: AppDimensions.spacingSmall),
-                        Text(
-                          'Add Cover Image',
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: AppColors.grey,
+                        // Toolbar with const constructors
+                        const _EditorToolbar(),
+                        
+                        // Editor
+                        Container(
+                          constraints: const BoxConstraints(
+                            minHeight: 250,
+                          ),
+                          padding: const EdgeInsets.all(16),
+                          child: QuillEditor(
+                            controller: _quillController,
+                            readOnly: false,
+                            autoFocus: false,
+                            expands: false,
+                            padding: EdgeInsets.zero,
+                            placeholder: 'Start writing...',
+                            style: DefaultTextBlockStyle(
+                              TextStyle(
+                                fontSize: AppTypography.bodyLarge.fontSize,
+                                color: AppColors.onSurface,
+                                height: 1.6,
+                              ),
+                              const TextStyle(),
+                              const TextStyle(),
+                              const TextStyle(),
+                            ),
                           ),
                         ),
                       ],
@@ -216,70 +231,8 @@ class _ArticleEditorPageState extends ConsumerState<ArticleEditorPage> {
                   ),
                 ),
                 
-                const SizedBox(height: AppDimensions.spacingLarge),
-                
-                // Editor
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
-                    border: BorderSide(color: AppColors.border),
-                  ),
-                  child: Column(
-                    children: [
-                      // Toolbar
-                      QuillToolbar.basic(
-                        controller: _quillController,
-                        multiRowsDisplay: false,
-                        showAlignmentButtons: true,
-                        showListNumbers: true,
-                        showListBullets: true,
-                        showListCheck: true,
-                        showCodeBlock: true,
-                        showQuote: true,
-                        showLink: true,
-                        showImage: false, // We'll handle image upload separately
-                        toolbarIconAlignment: WrapAlignment.start,
-                        color: AppColors.primary,
-                        iconTheme: QuillIconTheme(
-                          iconSelectedColor: AppColors.primary,
-                          iconUnselectedColor: AppColors.grey,
-                          iconSelectedFillColor: AppColors.primary.withOpacity(0.1),
-                          iconUnselectedFillColor: Colors.transparent,
-                        ),
-                      ),
-                      
-                      // Editor
-                      Container(
-                        constraints: const BoxConstraints(
-                          minHeight: 200,
-                        ),
-                        padding: const EdgeInsets.all(AppDimensions.paddingMedium),
-                        child: QuillEditor(
-                          controller: _quillController,
-                          readOnly: false,
-                          autoFocus: false,
-                          expands: false,
-                          padding: EdgeInsets.zero,
-                          placeholder: 'Start writing...',
-                          style: DefaultTextBlockStyle(
-                            TextStyle(
-                              fontSize: AppTypography.bodyLarge.fontSize,
-                              color: AppColors.onSurface,
-                              height: 1.6,
-                            ),
-                            const TextStyle(),
-                            const TextStyle(),
-                            const TextStyle(),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
                 if (_errorMessage != null) ...[
-                  const SizedBox(height: AppDimensions.spacingMedium),
+                  const SizedBox(height: 16),
                   Text(
                     _errorMessage!,
                     style: AppTypography.bodySmall.copyWith(
@@ -288,7 +241,7 @@ class _ArticleEditorPageState extends ConsumerState<ArticleEditorPage> {
                   ),
                 ],
                 
-                const SizedBox(height: AppDimensions.spacingXLarge),
+                const SizedBox(height: 32),
                 
                 // Action Buttons
                 Row(
@@ -300,7 +253,7 @@ class _ArticleEditorPageState extends ConsumerState<ArticleEditorPage> {
                         isLoading: _isLoading,
                       ),
                     ),
-                    const SizedBox(width: AppDimensions.spacingMedium),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: AppButton(
                         text: widget.articleId != null ? 'Update' : 'Publish',
@@ -310,10 +263,72 @@ class _ArticleEditorPageState extends ConsumerState<ArticleEditorPage> {
                     ),
                   ],
                 ),
+                
+                const SizedBox(height: 16),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCoverImagePlaceholder(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 200,
+      decoration: BoxDecoration(
+        color: AppColors.greyLight,
+        borderRadius: BorderRadius.circular(12),
+        border: BorderSide(color: AppColors.border, width: 1),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.image_outlined,
+              size: 40,
+              color: AppColors.grey,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Add Cover Image',
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.grey,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Editor toolbar with const constructors
+class _EditorToolbar extends StatelessWidget {
+  const _EditorToolbar({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return QuillToolbar.basic(
+      controller: QuillController.basic(),
+      multiRowsDisplay: false,
+      showAlignmentButtons: true,
+      showListNumbers: true,
+      showListBullets: true,
+      showListCheck: true,
+      showCodeBlock: true,
+      showQuote: true,
+      showLink: true,
+      showImage: false,
+      toolbarIconAlignment: WrapAlignment.start,
+      color: AppColors.primary,
+      iconTheme: QuillIconTheme(
+        iconSelectedColor: AppColors.primary,
+        iconUnselectedColor: AppColors.grey,
+        iconSelectedFillColor: AppColors.primary.withOpacity(0.1),
+        iconUnselectedFillColor: Colors.transparent,
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:medium_clone/core/theme/app_theme.dart';
+import '../../../core/theme/app_theme.dart';
 
+/// Optimized button with const constructors and proper hit testing
 class AppButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
@@ -33,22 +34,23 @@ class AppButton extends StatelessWidget {
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.onPrimary,
           padding: const EdgeInsets.symmetric(
-            horizontal: AppDimensions.paddingLarge,
-            vertical: AppDimensions.paddingMedium,
+            horizontal: 24,
+            vertical: 12,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
+            borderRadius: BorderRadius.circular(12),
           ),
           textStyle: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w600,
           ),
           disabledBackgroundColor: AppColors.primary.withOpacity(0.5),
           disabledForegroundColor: AppColors.onPrimary.withOpacity(0.5),
+          minimumSize: const Size(48, 48),
         ),
         child: isLoading
             ? const SizedBox(
-                width: AppDimensions.iconSmall,
-                height: AppDimensions.iconSmall,
+                width: 20,
+                height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   valueColor: AlwaysStoppedAnimation<Color>(AppColors.onPrimary),
@@ -59,11 +61,11 @@ class AppButton extends StatelessWidget {
                 children: [
                   if (leadingIcon != null) ...[
                     leadingIcon!,
-                    const SizedBox(width: AppDimensions.spacingSmall),
+                    const SizedBox(width: 8),
                   ],
                   Text(text),
                   if (trailingIcon != null) ...[
-                    const SizedBox(width: AppDimensions.spacingSmall),
+                    const SizedBox(width: 8),
                     trailingIcon!,
                   ],
                 ],
@@ -73,6 +75,7 @@ class AppButton extends StatelessWidget {
   }
 }
 
+/// Secondary button with optimized performance
 class AppButtonSecondary extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
@@ -82,6 +85,7 @@ class AppButtonSecondary extends StatelessWidget {
   final Widget? trailingIcon;
   final bool fullWidth;
   final bool disabled;
+  final EdgeInsetsGeometry? padding;
   
   const AppButtonSecondary({
     super.key,
@@ -93,6 +97,7 @@ class AppButtonSecondary extends StatelessWidget {
     this.trailingIcon,
     this.fullWidth = false,
     this.disabled = false,
+    this.padding,
   });
 
   @override
@@ -103,23 +108,24 @@ class AppButtonSecondary extends StatelessWidget {
         onPressed: disabled || isLoading ? null : onPressed,
         style: style ?? OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppDimensions.paddingLarge,
-            vertical: AppDimensions.paddingMedium,
+          padding: padding ?? const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 12,
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
+            borderRadius: BorderRadius.circular(12),
           ),
           side: BorderSide(color: AppColors.primary),
           textStyle: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w600,
           ),
           disabledForegroundColor: AppColors.primary.withOpacity(0.5),
+          minimumSize: const Size(48, 48),
         ),
         child: isLoading
             ? const SizedBox(
-                width: AppDimensions.iconSmall,
-                height: AppDimensions.iconSmall,
+                width: 20,
+                height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
@@ -130,11 +136,11 @@ class AppButtonSecondary extends StatelessWidget {
                 children: [
                   if (leadingIcon != null) ...[
                     leadingIcon!,
-                    const SizedBox(width: AppDimensions.spacingSmall),
+                    const SizedBox(width: 8),
                   ],
                   Text(text),
                   if (trailingIcon != null) ...[
-                    const SizedBox(width: AppDimensions.spacingSmall),
+                    const SizedBox(width: 8),
                     trailingIcon!,
                   ],
                 ],
@@ -144,6 +150,7 @@ class AppButtonSecondary extends StatelessWidget {
   }
 }
 
+/// Text button with optimized performance
 class AppButtonText extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
@@ -170,15 +177,16 @@ class AppButtonText extends StatelessWidget {
       onPressed: disabled || isLoading ? null : onPressed,
       style: TextButton.styleFrom(
         padding: const EdgeInsets.symmetric(
-          horizontal: AppDimensions.paddingSmall,
-          vertical: AppDimensions.paddingSmall,
+          horizontal: 8,
+          vertical: 8,
         ),
         disabledForegroundColor: AppColors.primary.withOpacity(0.5),
+        minimumSize: const Size(48, 48),
       ),
       child: isLoading
           ? const SizedBox(
-              width: AppDimensions.iconSmall,
-              height: AppDimensions.iconSmall,
+              width: 20,
+              height: 20,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
@@ -189,7 +197,7 @@ class AppButtonText extends StatelessWidget {
               children: [
                 if (leadingIcon != null) ...[
                   leadingIcon!,
-                  const SizedBox(width: AppDimensions.spacingSmall),
+                  const SizedBox(width: 8),
                 ],
                 Text(
                   text,
@@ -199,7 +207,7 @@ class AppButtonText extends StatelessWidget {
                   ),
                 ),
                 if (trailingIcon != null) ...[
-                  const SizedBox(width: AppDimensions.spacingSmall),
+                  const SizedBox(width: 8),
                   trailingIcon!,
                 ],
               ],
@@ -208,6 +216,7 @@ class AppButtonText extends StatelessWidget {
   }
 }
 
+/// Icon button with optimized performance
 class AppButtonIcon extends StatelessWidget {
   final Widget icon;
   final VoidCallback? onPressed;
@@ -235,17 +244,18 @@ class AppButtonIcon extends StatelessWidget {
         style: style ?? ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.onPrimary,
-          padding: const EdgeInsets.all(AppDimensions.paddingMedium),
+          padding: const EdgeInsets.all(12),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
+            borderRadius: BorderRadius.circular(12),
           ),
           disabledBackgroundColor: AppColors.primary.withOpacity(0.5),
           disabledForegroundColor: AppColors.onPrimary.withOpacity(0.5),
+          minimumSize: const Size(48, 48),
         ),
         child: isLoading
             ? const SizedBox(
-                width: AppDimensions.iconSmall,
-                height: AppDimensions.iconSmall,
+                width: 20,
+                height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   valueColor: AlwaysStoppedAnimation<Color>(AppColors.onPrimary),

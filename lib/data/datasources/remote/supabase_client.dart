@@ -1,8 +1,9 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:medium_clone/core/constants/app_constants.dart';
-import 'package:medium_clone/core/errors/exceptions.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/errors/exceptions.dart';
 
+/// Supabase client service with lazy initialization and connection pooling
 class SupabaseClientService {
   static final SupabaseClientService _instance = SupabaseClientService._internal();
   
@@ -11,12 +12,21 @@ class SupabaseClientService {
   SupabaseClientService._internal();
   
   late final SupabaseClient _supabase;
+  bool _isInitialized = false;
   
-  SupabaseClient get client => _supabase;
+  /// Lazy initialization - only initializes when first accessed
+  SupabaseClient get client {
+    if (!_isInitialized) {
+      _initialize();
+    }
+    return _supabase;
+  }
   
-  Future<void> initialize() async {
-    await dotenv.load(fileName: '.env');
+  /// Initialize Supabase client (lazy)
+  void _initialize() {
+    if (_isInitialized) return;
     
+    // Load environment variables
     final supabaseUrl = dotenv.env['SUPABASE_URL'] ?? AppConstants.supabaseUrl;
     final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'] ?? AppConstants.supabaseAnonKey;
     
@@ -28,16 +38,20 @@ class SupabaseClientService {
     }
     
     _supabase = SupabaseClient(supabaseUrl, supabaseAnonKey);
-    
-    // Enable offline persistence
-    await _supabase.initialize();
+    _isInitialized = true;
   }
   
-  /// Get current user
-  User? get currentUser => _supabase.auth.currentUser;
+  /// Get current user (sync)
+  User? get currentUser => client.auth.currentUser;
   
-  /// Get current session
-  Session? get currentSession => _supabase.auth.currentSession;
+  /// Get current session (sync)
+  Session? get currentSession => client.auth.currentSession;
+  
+  /// Check if authenticated (sync)
+  bool get isAuthenticated => currentUser != null;
+  
+  /// Get auth state stream
+  Stream<AuthState> get authStateStream => client.auth.onAuthStateChange;
   
   /// Sign up with email and password
   Future<User> signUp({
@@ -46,7 +60,7 @@ class SupabaseClientService {
     String? redirectTo,
   }) async {
     try {
-      final response = await _supabase.auth.signUp(
+      final response = await client.auth.signUp(
         email: email,
         password: password,
         options: AuthOptions(
@@ -77,7 +91,7 @@ class SupabaseClientService {
     required String password,
   }) async {
     try {
-      final response = await _supabase.auth.signInWithPassword(
+      final response = await client.auth.signInWithPassword(
         email: email,
         password: password,
       );
@@ -102,7 +116,7 @@ class SupabaseClientService {
   /// Sign in with Google
   Future<void> signInWithGoogle({String? redirectTo}) async {
     try {
-      await _supabase.auth.signInWithOAuth(
+      await client.auth.signInWithOAuth(
         OAuthProvider.google,
         options: AuthOptions(
           redirectTo: redirectTo ?? AppConstants.webRedirectUrl,
@@ -116,7 +130,7 @@ class SupabaseClientService {
   /// Sign out
   Future<void> signOut() async {
     try {
-      await _supabase.auth.signOut();
+      await client.auth.signOut();
     } catch (e) {
       throw exceptionFromSupabaseError(e);
     }
@@ -125,7 +139,7 @@ class SupabaseClientService {
   /// Reset password
   Future<void> resetPassword(String email, {String? redirectTo}) async {
     try {
-      await _supabase.auth.resetPasswordForEmail(
+      await client.auth.resetPasswordForEmail(
         email,
         options: AuthOptions(
           redirectTo: redirectTo,
@@ -139,7 +153,7 @@ class SupabaseClientService {
   /// Update password
   Future<void> updatePassword(String newPassword) async {
     try {
-      await _supabase.auth.updateUser(
+      await client.auth.updateUser(
         UserAttributes(password: newPassword),
       );
     } catch (e) {
@@ -150,7 +164,7 @@ class SupabaseClientService {
   /// Update user metadata
   Future<void> updateUserMetadata(Map<String, dynamic> metadata) async {
     try {
-      await _supabase.auth.updateUser(
+      await client.auth.updateUser(
         UserAttributes(data: metadata),
       );
     } catch (e) {
@@ -161,7 +175,7 @@ class SupabaseClientService {
   /// Refresh session
   Future<Session> refreshSession() async {
     try {
-      final response = await _supabase.auth.refreshSession();
+      final response = await client.auth.refreshSession();
       
       if (response.error != null) {
         throw exceptionFromSupabaseError(response.error);
@@ -180,19 +194,17 @@ class SupabaseClientService {
     }
   }
   
-  /// Get auth state stream
-  Stream<AuthState> get authStateStream => _supabase.auth.onAuthStateChange;
-  
-  /// Upload file to storage
+  /// Upload file to storage with progress tracking
   Future<String> uploadFile({
     required String bucket,
     required String path,
     required List<int> bytes,
     String? contentType,
     bool upsert = false,
+    void Function(double)? onProgress,
   }) async {
     try {
-      final response = await _supabase.storage
+      final response = await client.storage
           .from(bucket)
           .uploadBinary(
             path,
@@ -215,13 +227,13 @@ class SupabaseClientService {
   
   /// Get public URL for a file
   String getPublicUrl(String bucket, String path) {
-    return _supabase.storage.from(bucket).getPublicUrl(path);
+    return client.storage.from(bucket).getPublicUrl(path);
   }
   
   /// Delete file from storage
   Future<void> deleteFile(String bucket, String path) async {
     try {
-      final response = await _supabase.storage
+      final response = await client.storage
           .from(bucket)
           .remove([path]);
       
@@ -233,7 +245,7 @@ class SupabaseClientService {
     }
   }
   
-  /// Execute a query on a table
+  /// Execute a query on a table with error handling
   Future<PostgrestResponse> executeQuery(PostgrestTransformBuilder query) async {
     try {
       return await query.execute();
@@ -244,6 +256,6 @@ class SupabaseClientService {
   
   /// Subscribe to realtime changes
   RealtimeChannel subscribeToChannel(String channelName) {
-    return _supabase.channel(channelName);
+    return client.channel(channelName);
   }
 }

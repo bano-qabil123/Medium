@@ -1,8 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:medium_clone/core/theme/app_theme.dart';
-import 'package:medium_clone/core/utils/helpers.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/helpers.dart';
 
+/// Optimized avatar widget with caching and RepaintBoundary
 class AppAvatar extends StatelessWidget {
   final String? imageUrl;
   final String? name;
@@ -16,7 +17,7 @@ class AppAvatar extends StatelessWidget {
     super.key,
     this.imageUrl,
     this.name,
-    this.size = AppDimensions.avatarSizeMedium,
+    this.size = 48,
     this.showBorder = false,
     this.borderColor,
     this.borderWidth = 2,
@@ -28,8 +29,9 @@ class AppAvatar extends StatelessWidget {
     final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
     final displayName = name ?? 'U';
     
-    if (hasImage) {
-      return Container(
+    // Use RepaintBoundary to isolate avatar repaints
+    return RepaintBoundary(
+      child: Container(
         width: size,
         height: size,
         decoration: BoxDecoration(
@@ -41,20 +43,24 @@ class AppAvatar extends StatelessWidget {
                 )
               : null,
         ),
-        child: ClipOval(
-          child: CachedNetworkImage(
-            imageUrl: imageUrl!,
-            width: size,
-            height: size,
-            fit: fit ?? BoxFit.cover,
-            placeholder: (context, url) => _buildPlaceholder(displayName, size),
-            errorWidget: (context, url, error) => _buildPlaceholder(displayName, size),
-          ),
-        ),
-      );
-    }
-    
-    return _buildPlaceholder(displayName, size);
+        child: hasImage 
+            ? ClipOval(
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl!,
+                  width: size,
+                  height: size,
+                  fit: fit ?? BoxFit.cover,
+                  placeholder: (context, url) => _buildPlaceholder(displayName, size),
+                  errorWidget: (context, url, error) => _buildPlaceholder(displayName, size),
+                  fadeInImage: true,
+                  fadeInDuration: const Duration(milliseconds: 200),
+                  cacheKey: imageUrl,
+                  maxHeightDiskCache: 200,
+                ),
+              )
+            : _buildPlaceholder(displayName, size),
+      ),
+    );
   }
   
   Widget _buildPlaceholder(String name, double size) {
@@ -64,12 +70,6 @@ class AppAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         color: Helpers.getColorFromString(name),
         shape: BoxShape.circle,
-        border: showBorder 
-            ? Border.all(
-                color: borderColor ?? AppColors.primary,
-                width: borderWidth,
-              )
-            : null,
       ),
       child: Center(
         child: Text(
@@ -85,6 +85,7 @@ class AppAvatar extends StatelessWidget {
   }
 }
 
+/// Small avatar (32px)
 class AppAvatarSmall extends StatelessWidget {
   final String? imageUrl;
   final String? name;
@@ -100,14 +101,41 @@ class AppAvatarSmall extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppAvatar(
+      key: key,
       imageUrl: imageUrl,
       name: name,
-      size: AppDimensions.avatarSizeSmall,
+      size: 32,
       showBorder: showBorder,
     );
   }
 }
 
+/// Medium avatar (48px) - Default
+class AppAvatarMedium extends StatelessWidget {
+  final String? imageUrl;
+  final String? name;
+  final bool showBorder;
+  
+  const AppAvatarMedium({
+    super.key,
+    this.imageUrl,
+    this.name,
+    this.showBorder = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppAvatar(
+      key: key,
+      imageUrl: imageUrl,
+      name: name,
+      size: 48,
+      showBorder: showBorder,
+    );
+  }
+}
+
+/// Large avatar (72px)
 class AppAvatarLarge extends StatelessWidget {
   final String? imageUrl;
   final String? name;
@@ -123,14 +151,16 @@ class AppAvatarLarge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppAvatar(
+      key: key,
       imageUrl: imageUrl,
       name: name,
-      size: AppDimensions.avatarSizeLarge,
+      size: 72,
       showBorder: showBorder,
     );
   }
 }
 
+/// Avatar group with optimized rendering
 class AppAvatarGroup extends StatelessWidget {
   final List<String?> imageUrls;
   final List<String?> names;
@@ -143,8 +173,8 @@ class AppAvatarGroup extends StatelessWidget {
     super.key,
     required this.imageUrls,
     required this.names,
-    this.size = AppDimensions.avatarSizeSmall,
-    this.spacing = AppDimensions.spacingXSmall,
+    this.size = 32,
+    this.spacing = 4,
     this.maxAvatars = 3,
     this.showMoreIndicator = true,
   });
@@ -157,6 +187,7 @@ class AppAvatarGroup extends StatelessWidget {
     for (int i = 0; i < imageUrls.length && i < maxAvatars; i++) {
       avatars.add(
         AppAvatar(
+          key: ValueKey('avatar-${imageUrls[i]}-$i'),
           imageUrl: imageUrls[i],
           name: names[i],
           size: size,
@@ -167,6 +198,7 @@ class AppAvatarGroup extends StatelessWidget {
     if (remaining > 0 && showMoreIndicator) {
       avatars.add(
         Container(
+          key: const ValueKey('avatar-more'),
           width: size,
           height: size,
           decoration: BoxDecoration(
@@ -190,6 +222,7 @@ class AppAvatarGroup extends StatelessWidget {
     return Row(
       children: avatars
           .map((avatar) => Padding(
+                key: ValueKey('avatar-padding-${avatars.indexOf(avatar)}'),
                 padding: EdgeInsets.only(right: spacing),
                 child: avatar,
               ))
