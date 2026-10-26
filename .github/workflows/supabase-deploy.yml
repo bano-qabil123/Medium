@@ -1,0 +1,41 @@
+name: Supabase Deploy
+
+on:
+  push:
+    branches: [ main, perf/ui-smoothness ]
+    paths:
+      - 'supabase/**'
+
+jobs:
+  deploy:
+    name: Deploy Supabase Migrations
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install Supabase CLI
+        run: npm install -g supabase@latest
+        
+      - name: Link Supabase Project
+        run: |
+          echo '${{ secrets.SUPABASE_CONFIG }}' > ~/.supabase/config.toml
+          supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID }} --password '${{ secrets.SUPABASE_DB_PASSWORD }}'
+        
+      - name: Apply Migrations
+        run: supabase db push --db-password '${{ secrets.SUPABASE_DB_PASSWORD }}'
+        
+      - name: Verify Deployment
+        run: |
+          echo "Supabase migrations deployed successfully!"
+          supabase db dump --db-password '${{ secrets.SUPABASE_DB_PASSWORD }}' > schema_dump.sql
+          echo "Schema dump created for verification"
