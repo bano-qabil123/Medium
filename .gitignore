@@ -1,0 +1,46 @@
+# Dart/Flutter
+.dart_tool/
+.build/
+generated_plugin_registrant.dart
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Supabase
+supabase/
+
+# Flutter
+*.jks
+*.keystore
+*.pem
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Linux
+*~
+
+# Android
+android/app/debug.keystore
+android/app/google-services.json
+
+# iOS
+ios/Runner/GoogleService-Info.plist
+ios/Runner/GeneratedPluginRegistrant.swift
+
+# Test
+coverage/
+
+# Logs
+*.log
