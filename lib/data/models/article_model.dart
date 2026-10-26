@@ -23,10 +23,11 @@ class ArticleModel with _$ArticleModel {
     @fs.Timestamp() DateTime? createdAt,
     @Default(0) int readTimeMinutes,
     @Default(0) int views,
-    @Default(0) int likesCount,
+    @Default(0) int clapsCount,
     @Default(0) int commentsCount,
+    @Default(0) int highlightsCount,
     @Default(false) bool isBookmarked,
-    @Default(false) bool isLiked,
+    @Default(false) bool isClapped,
     @Default([]) List<String> tags,
   }) = _ArticleModel;
 
@@ -56,10 +57,11 @@ class ArticleModel with _$ArticleModel {
           : null,
       readTimeMinutes: json['read_time_minutes'] as int? ?? 0,
       views: json['views'] as int? ?? 0,
-      likesCount: json['likes_count'] as int? ?? 0,
+      clapsCount: json['claps_count'] as int? ?? 0,
       commentsCount: json['comments_count'] as int? ?? 0,
+      highlightsCount: json['highlights_count'] as int? ?? 0,
       isBookmarked: json['is_bookmarked'] as bool? ?? false,
-      isLiked: json['is_liked'] as bool? ?? false,
+      isClapped: json['is_clapped'] as bool? ?? false,
       tags: (json['tags'] as List<dynamic>?)
           ?.map((tag) => tag.toString())
           .toList() ?? [],
@@ -83,8 +85,9 @@ class ArticleModel with _$ArticleModel {
       'created_at': createdAt?.toIso8601String(),
       'read_time_minutes': readTimeMinutes,
       'views': views,
-      'likes_count': likesCount,
+      'claps_count': clapsCount,
       'comments_count': commentsCount,
+      'highlights_count': highlightsCount,
       'tags': tags,
     };
   }
@@ -106,6 +109,12 @@ class ArticleModel with _$ArticleModel {
   
   /// Check if the article has a cover image
   bool get hasCoverImage => coverImageUrl != null && coverImageUrl!.isNotEmpty;
+  
+  /// Check if the article has been clapped by current user
+  bool get hasBeenClapped => isClapped;
+  
+  /// Check if the article has been bookmarked by current user
+  bool get hasBeenBookmarked => isBookmarked;
   
   /// Get cover image URL or placeholder
   String get coverImage => coverImageUrl ?? '';

@@ -51,6 +51,19 @@ dependencies:
   # Icons
   cupertino_icons: ^1.0.6
   
+  # Fonts
+  google_fonts: ^6.1.0
+  
+  # Haptics
+  vibration: ^3.0.0
+  
+  # Animations
+  flutter_animate: ^4.2.0
+  shimmer: ^3.0.0
+  
+  # Highlighting
+  flutter_highlight: ^0.7.0
+  
   # Network
   dio: ^5.4.0
 
