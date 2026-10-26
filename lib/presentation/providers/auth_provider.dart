@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:medium_clone/data/datasources/remote/supabase_client.dart';
-import 'package:medium_clone/data/models/user_model.dart';
-import 'package:medium_clone/data/repositories/auth_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../data/datasources/remote/supabase_client.dart';
+import '../../data/models/user_model.dart';
 
-// Supabase Client Provider
+// Supabase Client Provider - Lazy initialization
 final supabaseClientProvider = Provider<SupabaseClientService>((ref) {
   return SupabaseClientService();
 });
@@ -13,29 +13,29 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(ref.watch(supabaseClientProvider));
 });
 
-// Auth State Provider
+// Auth State Provider - Stream-based for realtime updates
 final authStateProvider = StreamProvider<AuthState>((ref) {
   return ref.watch(authRepositoryProvider).authStateStream;
 });
 
-// Current User Provider
+// Current User Provider - Sync access to current user
 final currentUserProvider = Provider<User?>((ref) {
   return ref.watch(supabaseClientProvider).currentUser;
 });
 
-// Is Authenticated Provider
+// Is Authenticated Provider - Sync check
 final isAuthenticatedProvider = Provider<bool>((ref) {
-  return ref.watch(supabaseClientProvider).isAuthenticated;
+  return ref.watch(currentUserProvider) != null;
 });
 
-// Current User Profile Provider
+// Current User Profile Provider - Async load with caching
 final currentUserProfileProvider = FutureProvider<UserModel?>((ref) async {
   final user = ref.watch(currentUserProvider);
   if (user == null) return null;
   return ref.watch(authRepositoryProvider).getUserProfile(user.id);
 });
 
-// Auth Controller Provider
+// Auth Controller Provider - State management
 final authControllerProvider = StateNotifierProvider<AuthController, AsyncValue<UserModel?>>((ref) {
   return AuthController(ref.watch(authRepositoryProvider));
 });
@@ -47,8 +47,7 @@ class AuthController extends StateNotifier<AsyncValue<UserModel?>> {
   
   Future<void> initialize() async {
     try {
-      await _authRepository._supabaseClient.initialize();
-      
+      // Initialize Supabase (already done in constructor)
       final user = _authRepository.currentUser;
       if (user != null) {
         final profile = await _authRepository.getUserProfile(user.id);

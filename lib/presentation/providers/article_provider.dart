@@ -1,34 +1,34 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:medium_clone/core/constants/app_constants.dart';
-import 'package:medium_clone/data/models/article_model.dart';
-import 'package:medium_clone/data/repositories/article_repository.dart';
-import 'package:medium_clone/presentation/providers/auth_provider.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../data/models/article_model.dart';
+import '../../data/repositories/article_repository.dart';
 
 // Article Repository Provider
 final articleRepositoryProvider = Provider<ArticleRepository>((ref) {
   return ArticleRepository(ref.watch(supabaseClientProvider));
 });
 
-// Articles Feed Provider
+// Articles Feed Provider - Optimized with pagination
 final articlesFeedProvider = StateNotifierProvider<ArticlesFeedNotifier, AsyncValue<List<ArticleModel>>>((ref) {
   return ArticlesFeedNotifier(ref.watch(articleRepositoryProvider));
 });
 
-// Article Detail Provider
+// Article Detail Provider - Family provider for individual articles
 final articleDetailProvider = FutureProviderFamily<ArticleModel, String>((ref, articleId) async {
   return ref.watch(articleRepositoryProvider).getArticleById(articleId);
 });
 
-// User Articles Provider
+// User Articles Provider - Family provider for user's articles
 final userArticlesProvider = FutureProviderFamily<List<ArticleModel>, String>((ref, userId) async {
   return ref.watch(articleRepositoryProvider).getUserArticles(userId: userId);
 });
 
-// Article Controller Provider
+// Article Controller Provider - For CRUD operations
 final articleControllerProvider = StateNotifierProvider<ArticleController, AsyncValue<ArticleModel?>>((ref) {
   return ArticleController(ref.watch(articleRepositoryProvider));
 });
 
+/// Optimized feed notifier with pagination and caching
 class ArticlesFeedNotifier extends StateNotifier<AsyncValue<List<ArticleModel>>> {
   final ArticleRepository _articleRepository;
   
@@ -38,12 +38,16 @@ class ArticlesFeedNotifier extends StateNotifier<AsyncValue<List<ArticleModel>>>
   String? _searchQuery;
   bool _onlyFollowing = false;
   
+  // Cache for articles
+  final List<ArticleModel> _cachedArticles = [];
+  
   ArticlesFeedNotifier(this._articleRepository) : super(const AsyncValue.data([]));
   
   Future<void> loadArticles({bool refresh = false}) async {
     if (refresh) {
       _page = 0;
       _hasMore = true;
+      _cachedArticles.clear();
     }
     
     if (!_hasMore && !refresh) return;
@@ -65,9 +69,12 @@ class ArticlesFeedNotifier extends StateNotifier<AsyncValue<List<ArticleModel>>>
       _page++;
       
       if (refresh) {
-        state = AsyncValue.data(articles);
+        _cachedArticles.clear();
+        _cachedArticles.addAll(articles);
+        state = AsyncValue.data(_cachedArticles);
       } else {
-        state = AsyncValue.data([...state.valueOrNull ?? [], ...articles]);
+        _cachedArticles.addAll(articles);
+        state = AsyncValue.data(_cachedArticles);
       }
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
@@ -87,6 +94,7 @@ class ArticlesFeedNotifier extends StateNotifier<AsyncValue<List<ArticleModel>>>
     _tag = tag;
     _page = 0;
     _hasMore = true;
+    _cachedArticles.clear();
     loadArticles(refresh: true);
   }
   
@@ -94,6 +102,7 @@ class ArticlesFeedNotifier extends StateNotifier<AsyncValue<List<ArticleModel>>>
     _searchQuery = query;
     _page = 0;
     _hasMore = true;
+    _cachedArticles.clear();
     loadArticles(refresh: true);
   }
   
@@ -101,13 +110,16 @@ class ArticlesFeedNotifier extends StateNotifier<AsyncValue<List<ArticleModel>>>
     _onlyFollowing = !_onlyFollowing;
     _page = 0;
     _hasMore = true;
+    _cachedArticles.clear();
     loadArticles(refresh: true);
   }
   
   bool get hasMore => _hasMore;
   bool get isLoading => state.isLoading;
+  List<ArticleModel> get cachedArticles => List.unmodifiable(_cachedArticles);
 }
 
+/// Article controller for CRUD operations
 class ArticleController extends StateNotifier<AsyncValue<ArticleModel?>> {
   final ArticleRepository _articleRepository;
   

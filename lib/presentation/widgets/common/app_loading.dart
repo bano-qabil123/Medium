@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:medium_clone/core/theme/app_theme.dart';
+import '../../../core/theme/app_theme.dart';
 
+/// Optimized loading indicator with const constructors
 class AppLoading extends StatelessWidget {
   final double size;
   final Color? color;
@@ -13,7 +14,7 @@ class AppLoading extends StatelessWidget {
   
   const AppLoading({
     super.key,
-    this.size = AppDimensions.iconLarge,
+    this.size = 40,
     this.color,
     this.strokeWidth,
     this.label,
@@ -43,7 +44,7 @@ class AppLoading extends StatelessWidget {
             ),
           ),
           if (label != null) ...[
-            const SizedBox(height: AppDimensions.spacingMedium),
+            const SizedBox(height: 16),
             Text(
               label!,
               style: labelStyle ?? AppTypography.bodyMedium.copyWith(
@@ -57,6 +58,7 @@ class AppLoading extends StatelessWidget {
   }
 }
 
+/// Small loading indicator
 class AppLoadingSmall extends StatelessWidget {
   final Color? color;
   final double? strokeWidth;
@@ -69,14 +71,14 @@ class AppLoadingSmall extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppLoading(
-      size: AppDimensions.iconSmall,
-      color: color,
-      strokeWidth: strokeWidth ?? 2,
+    return const AppLoading(
+      size: 20,
+      strokeWidth: 2,
     );
   }
 }
 
+/// Large loading indicator
 class AppLoadingLarge extends StatelessWidget {
   final Color? color;
   final double? strokeWidth;
@@ -89,44 +91,14 @@ class AppLoadingLarge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppLoading(
-      size: AppDimensions.iconXLarge,
-      color: color,
-      strokeWidth: strokeWidth ?? 4,
+    return const AppLoading(
+      size: 64,
+      strokeWidth: 4,
     );
   }
 }
 
-class AppLoadingOverlay extends StatelessWidget {
-  final Color? color;
-  final double? strokeWidth;
-  final String? label;
-  
-  const AppLoadingOverlay({
-    super.key,
-    this.color,
-    this.strokeWidth,
-    this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black.withOpacity(0.5),
-      child: Center(
-        child: AppLoading(
-          color: color ?? Colors.white,
-          strokeWidth: strokeWidth,
-          label: label,
-          labelStyle: AppTypography.bodyMedium.copyWith(
-            color: Colors.white,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
+/// Shimmer loading effect for content placeholders
 class AppShimmer extends StatelessWidget {
   final double width;
   final double height;
@@ -150,14 +122,11 @@ class AppShimmer extends StatelessWidget {
       height: height,
       decoration: BoxDecoration(
         color: baseColor ?? AppColors.greyLight,
-        borderRadius: BorderRadius.circular(borderRadius ?? AppDimensions.radiusSmall),
+        borderRadius: BorderRadius.circular(borderRadius ?? 8),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(borderRadius ?? AppDimensions.radiusSmall),
-        child: _ShimmerEffect(
-          baseColor: baseColor ?? AppColors.greyLight,
-          highlightColor: highlightColor ?? AppColors.grey,
-        ),
+      child: _ShimmerEffect(
+        baseColor: baseColor ?? AppColors.greyLight,
+        highlightColor: highlightColor ?? AppColors.grey,
       ),
     );
   }
@@ -193,6 +162,7 @@ class _ShimmerEffect extends StatelessWidget {
   }
 }
 
+/// Shimmer list for loading multiple items
 class AppShimmerList extends StatelessWidget {
   final int itemCount;
   final double itemHeight;
@@ -205,7 +175,7 @@ class AppShimmerList extends StatelessWidget {
     required this.itemCount,
     required this.itemHeight,
     this.itemWidth,
-    this.spacing = AppDimensions.spacingMedium,
+    this.spacing = 16,
     this.borderRadius,
   });
 
@@ -226,6 +196,7 @@ class AppShimmerList extends StatelessWidget {
   }
 }
 
+/// Shimmer card for article placeholders
 class AppShimmerCard extends StatelessWidget {
   final double? width;
   final double? height;
@@ -240,11 +211,18 @@ class AppShimmerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(borderRadius ?? 12),
+        border: BorderSide(color: AppColors.border, width: 1),
+      ),
       child: AppShimmer(
-        width: width ?? double.infinity,
-        height: height ?? 100,
-        borderRadius: borderRadius ?? AppDimensions.radiusMedium,
+        width: double.infinity,
+        height: double.infinity,
+        borderRadius: borderRadius ?? 12,
       ),
     );
   }

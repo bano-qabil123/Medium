@@ -1,20 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:medium_clone/core/theme/app_theme.dart';
-import 'package:medium_clone/presentation/providers/article_provider.dart';
-import 'package:medium_clone/presentation/providers/auth_provider.dart';
-import 'package:medium_clone/presentation/widgets/common/app_loading.dart';
-import 'package:medium_clone/presentation/widgets/common/app_empty_state.dart';
-import 'package:medium_clone/presentation/widgets/article/article_card.dart';
-import 'package:medium_clone/presentation/widgets/layout/main_layout.dart';
+import 'package:go_router/go_router.dart';
+import 'package:pull_to_refresh/pull_to_refresh.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/article_provider.dart';
+import '../../widgets/common/app_loading.dart';
+import '../../widgets/common/app_empty_state.dart';
+import '../../widgets/article/article_card.dart';
+import '../../widgets/layout/main_layout.dart';
+import '../../routes/app_router.dart';
 
-class HomePage extends ConsumerWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends ConsumerState<HomePage> {
+  final RefreshController _refreshController = RefreshController(initialRefresh: false);
+  
+  @override
+  void dispose() {
+    _refreshController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _onRefresh() async {
+    await ref.read(articlesFeedProvider.notifier).refresh();
+    _refreshController.refreshCompleted();
+  }
+
+  Future<void> _onLoading() async {
+    await ref.read(articlesFeedProvider.notifier).loadMore();
+    _refreshController.loadComplete();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final articlesAsync = ref.watch(articlesFeedProvider);
-    final authState = ref.watch(authControllerProvider);
+    final isAuthenticated = ref.watch(isAuthenticatedProvider);
     
     return MainLayout(
       title: 'Medium Clone',
@@ -26,71 +51,58 @@ class HomePage extends ConsumerWidget {
         // TODO: Navigate to notifications
       },
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/article/editor'),
+        onPressed: () => context.push(AppRoutes.articleEditor),
         child: const Icon(Icons.add),
       ),
-      child: RefreshIndicator(
-        onRefresh: () => ref.read(articlesFeedProvider.notifier).refresh(),
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(AppDimensions.paddingMedium),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Feed',
-                      style: AppTypography.headlineMedium.copyWith(
-                        color: AppColors.onSurface,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            articlesAsync.when(
-              loading: () => SliverFillRemaining(
-                child: Center(
-                  child: AppLoading(label: 'Loading articles...'),
-                ),
-              ),
-              error: (error, stack) => SliverFillRemaining(
-                child: AppEmptyStateError(
-                  message: error.toString(),
-                  onRetry: () => ref.read(articlesFeedProvider.notifier).refresh(),
-                ),
-              ),
-              data: (articles) {
-                if (articles.isEmpty) {
-                  return SliverFillRemaining(
-                    child: AppEmptyStateNoArticles(
-                      isCurrentUser: false,
-                      onCreateArticle: () => context.push('/article/editor'),
-                    ),
+      child: SmartRefresher(
+        enablePullDown: true,
+        enablePullUp: true,
+        header: const WaterDropHeader(),
+        footer: const ClassicFooter(),
+        controller: _refreshController,
+        onRefresh: _onRefresh,
+        onLoading: _onLoading,
+        child: articlesAsync.when(
+          loading: () => const Center(child: AppLoading()),
+          error: (error, stack) => AppEmptyStateError(
+            message: error.toString(),
+            onRetry: _onRefresh,
+          ),
+          data: (articles) {
+            if (articles.isEmpty) {
+              return AppEmptyStateNoArticles(
+                isCurrentUser: true,
+                onCreateArticle: () => context.push(AppRoutes.articleEditor),
+              );
+            }
+            
+            // Use ListView.builder for smooth scrolling
+            // itemExtent is not used because articles have variable heights
+            return ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: articles.length + (ref.read(articlesFeedProvider.notifier).hasMore ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index == articles.length) {
+                  // Loading indicator at bottom
+                  return const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(child: AppLoadingSmall()),
                   );
                 }
                 
-                return SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final article = articles[index];
-                      return Padding(
-                        padding: EdgeInsets.only(
-                          bottom: index == articles.length - 1 
-                              ? AppDimensions.paddingLarge 
-                              : AppDimensions.paddingMedium,
-                        ),
-                        child: ArticleCard(article: article),
-                      );
-                    },
-                    childCount: articles.length,
+                // Use RepaintBoundary to isolate article card repaints
+                return RepaintBoundary(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: ArticleCard(
+                      key: ValueKey(articles[index].id),
+                      article: articles[index],
+                    ),
                   ),
                 );
               },
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
