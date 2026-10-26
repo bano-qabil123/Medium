@@ -1,0 +1,19 @@
+[global]
+project_id = "xbixwtzyfbardoujghjc"
+api_url = "https://xbixwtzyfbardoujghjc.supabase.co"
+
+[auth]
+anon_key = "sb_publishable_Ilk5gVSFujURGniIssrD6w_CGbAdRYW"
+
+[db]
+host = "db.xbixwtzyfbardoujghjc.supabase.co"
+port = 5432
+user = "postgres"
+password = "jjyEs3Zhrr0XYzwz"
+database = "postgres"
+
+[storage]
+file_size_limit = 52428800
+
+[realtime]
+max_connections = 100

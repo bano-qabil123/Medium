@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
+import 'package:vibration/vibration.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/article_provider.dart';
 import '../../widgets/common/app_loading.dart';
@@ -9,6 +10,7 @@ import '../../widgets/common/app_empty_state.dart';
 import '../../widgets/article/article_card.dart';
 import '../../widgets/layout/main_layout.dart';
 import '../../routes/app_router.dart';
+import '../../core/theme/app_theme.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -27,6 +29,11 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _onRefresh() async {
+    // Trigger haptic feedback on pull-to-refresh
+    if (await Vibration.hasVibrator() ?? false) {
+      Vibration.vibrate(duration: 50, amplitude: 64);
+    }
+    
     await ref.read(articlesFeedProvider.notifier).refresh();
     _refreshController.refreshCompleted();
   }
@@ -44,20 +51,18 @@ class _HomePageState extends ConsumerState<HomePage> {
     return MainLayout(
       title: 'Medium Clone',
       showSearch: true,
-      onSearchPressed: () {
-        // TODO: Navigate to search
-      },
-      onNotificationPressed: () {
-        // TODO: Navigate to notifications
-      },
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push(AppRoutes.articleEditor),
-        child: const Icon(Icons.add),
-      ),
+      onSearchPressed: () => context.push('/search'),
+      onNotificationPressed: () => context.push('/notifications'),
+      floatingActionButton: isAuthenticated
+          ? FloatingActionButton(
+              onPressed: () => context.push(AppRoutes.articleEditor),
+              child: const Icon(Icons.add),
+            )
+          : null,
       child: SmartRefresher(
         enablePullDown: true,
         enablePullUp: true,
-        header: const WaterDropHeader(),
+        header: const WaterDropMaterialHeader(),
         footer: const ClassicFooter(),
         controller: _refreshController,
         onRefresh: _onRefresh,
@@ -71,21 +76,23 @@ class _HomePageState extends ConsumerState<HomePage> {
           data: (articles) {
             if (articles.isEmpty) {
               return AppEmptyStateNoArticles(
-                isCurrentUser: true,
-                onCreateArticle: () => context.push(AppRoutes.articleEditor),
+                isAuthenticated: isAuthenticated,
+                onCreate: isAuthenticated 
+                    ? () => context.push(AppRoutes.articleEditor)
+                    : null,
               );
             }
             
             // Use ListView.builder for smooth scrolling
             // itemExtent is not used because articles have variable heights
             return ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppDimensions.paddingMedium),
               itemCount: articles.length + (ref.read(articlesFeedProvider.notifier).hasMore ? 1 : 0),
               itemBuilder: (context, index) {
                 if (index == articles.length) {
                   // Loading indicator at bottom
                   return const Padding(
-                    padding: EdgeInsets.all(16),
+                    padding: EdgeInsets.all(AppDimensions.paddingMedium),
                     child: Center(child: AppLoadingSmall()),
                   );
                 }
@@ -93,10 +100,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                 // Use RepaintBoundary to isolate article card repaints
                 return RepaintBoundary(
                   child: Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.only(bottom: AppDimensions.spacingMedium),
                     child: ArticleCard(
                       key: ValueKey(articles[index].id),
                       article: articles[index],
+                      onTap: () => context.push('/article/${articles[index].id}'),
                     ),
                   ),
                 );
@@ -105,6 +113,19 @@ class _HomePageState extends ConsumerState<HomePage> {
           },
         ),
       ),
+    );
+  }
+}
+
+/// Custom header with haptic feedback
+class WaterDropMaterialHeader extends StatelessWidget {
+  const WaterDropMaterialHeader({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialClassicHeader(
+      color: Theme.of(context).colorScheme.primary,
+      backgroundColor: Theme.of(context).colorScheme.surface,
     );
   }
 }

@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart' as fs;
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:medium_clone/data/models/article_model.dart';
 import 'package:medium_clone/data/models/comment_model.dart';
@@ -20,7 +19,7 @@ class NotificationModel with _$NotificationModel {
     String? fromUserId,
     UserModel? fromUser,
     @Default(false) bool isRead,
-    @fs.Timestamp() DateTime? createdAt,
+    DateTime? createdAt,
   }) = _NotificationModel;
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) =>

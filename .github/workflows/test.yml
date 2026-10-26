@@ -1,0 +1,94 @@
+name: Test & Analyze
+
+on:
+  push:
+    branches: [ main, perf/ui-smoothness, initial-clone ]
+  pull_request:
+    branches: [ main, perf/ui-smoothness ]
+
+jobs:
+  analyze:
+    name: Flutter Analyze
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.5'
+          channel: 'stable'
+          cache: true
+          
+      - name: Get dependencies
+        run: flutter pub get
+        
+      - name: Run flutter analyze
+        run: flutter analyze --fatal-infos --fatal-warnings .
+        
+  test:
+    name: Flutter Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.5'
+          channel: 'stable'
+          cache: true
+          
+      - name: Get dependencies
+        run: flutter pub get
+        
+      - name: Generate code
+        run: flutter pub run build_runner build --delete-conflicting-outputs || true
+        
+      - name: Run unit tests
+        run: flutter test --coverage --no-sound-null-safety test/
+        
+      - name: Run widget tests
+        run: flutter test --no-sound-null-safety --concurrency=1 || true
+        
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          flags: unittests
+          fail_ci_if_error: false
+          
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.5'
+          channel: 'stable'
+          cache: true
+          
+      - name: Get dependencies
+        run: flutter pub get
+        
+      - name: Run flutter format check
+        run: flutter format --set-exit-if-changed .
+        
+      - name: Check for TODOs
+        run: grep -r "TODO\|FIXME\|XXX" lib/ --include="*.dart" && echo "::error::Found TODOs in code" || echo "No TODOs found"

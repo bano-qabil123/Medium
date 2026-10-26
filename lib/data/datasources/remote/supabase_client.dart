@@ -26,7 +26,7 @@ class SupabaseClientService {
   void _initialize() {
     if (_isInitialized) return;
     
-    // Load environment variables
+    // Load environment variables with fallback to constants
     final supabaseUrl = dotenv.env['SUPABASE_URL'] ?? AppConstants.supabaseUrl;
     final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'] ?? AppConstants.supabaseAnonKey;
     

@@ -2,246 +2,282 @@ import 'package:flutter/material.dart';
 import 'package:medium_clone/core/theme/app_theme.dart';
 import 'package:medium_clone/presentation/widgets/common/app_button.dart';
 
+/// Empty state widget for when there's no data
 class AppEmptyState extends StatelessWidget {
+  final IconData? icon;
   final String title;
-  final String? message;
-  final Widget? icon;
-  final Widget? image;
+  final String message;
   final Widget? action;
-  final String? actionText;
-  final VoidCallback? onActionPressed;
-  final EdgeInsetsGeometry? padding;
-  final TextStyle? titleStyle;
-  final TextStyle? messageStyle;
-  
+  final bool showIcon;
+
   const AppEmptyState({
     super.key,
-    required this.title,
-    this.message,
     this.icon,
-    this.image,
+    required this.title,
+    required this.message,
     this.action,
-    this.actionText,
-    this.onActionPressed,
-    this.padding,
-    this.titleStyle,
-    this.messageStyle,
+    this.showIcon = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: padding ?? const EdgeInsets.all(AppDimensions.paddingLarge),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          if (image != null) ...[
-            image!,
-            const SizedBox(height: AppDimensions.spacingLarge),
-          ],
-          if (icon != null) ...[
-            icon!,
-            const SizedBox(height: AppDimensions.spacingLarge),
-          ],
-          Text(
-            title,
-            style: titleStyle ?? AppTypography.headlineSmall.copyWith(
-              color: AppColors.onSurface,
-              fontWeight: FontWeight.w600,
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppDimensions.paddingXXLarge),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (showIcon && icon != null) ...[
+              Icon(
+                icon,
+                size: AppDimensions.iconXLarge,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(height: AppDimensions.spacingLarge),
+            ],
+            Text(
+              title,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            textAlign: TextAlign.center,
-          ),
-          if (message != null) ...[
             const SizedBox(height: AppDimensions.spacingSmall),
             Text(
-              message!,
-              style: messageStyle ?? AppTypography.bodyMedium.copyWith(
-                color: AppColors.onSurface.withOpacity(0.7),
+              message,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
+            if (action != null) ...[
+              const SizedBox(height: AppDimensions.spacingLarge),
+              action!,
+            ],
           ],
-          if (action != null) ...[
-            const SizedBox(height: AppDimensions.spacingLarge),
-            action!,
-          ],
-          if (actionText != null && onActionPressed != null) ...[
-            const SizedBox(height: AppDimensions.spacingLarge),
-            AppButton(
-              text: actionText!,
-              onPressed: onActionPressed,
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
 }
 
-class AppEmptyStateWithIcon extends StatelessWidget {
-  final String title;
-  final String? message;
-  final IconData icon;
-  final Color? iconColor;
-  final double? iconSize;
-  final Widget? action;
-  final String? actionText;
-  final VoidCallback? onActionPressed;
-  
-  const AppEmptyStateWithIcon({
+/// Empty state with error message
+class AppEmptyStateError extends StatelessWidget {
+  final String message;
+  final VoidCallback? onRetry;
+  final IconData? icon;
+
+  const AppEmptyStateError({
     super.key,
-    required this.title,
-    this.message,
-    required this.icon,
-    this.iconColor,
-    this.iconSize,
-    this.action,
-    this.actionText,
-    this.onActionPressed,
+    required this.message,
+    this.onRetry,
+    this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
     return AppEmptyState(
-      title: title,
+      icon: icon ?? Icons.error_outline,
+      title: 'Error',
       message: message,
-      icon: Icon(
-        icon,
-        size: iconSize ?? AppDimensions.iconXLarge,
-        color: iconColor ?? AppColors.grey,
-      ),
-      action: action,
-      actionText: actionText,
-      onActionPressed: onActionPressed,
+      action: onRetry != null
+          ? AppButtonSecondary(
+              text: 'Retry',
+              onPressed: onRetry,
+            )
+          : null,
     );
   }
 }
 
+/// Empty state for loading
+class AppEmptyStateLoading extends StatelessWidget {
+  final String? message;
+
+  const AppEmptyStateLoading({super.key, this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppEmptyState(
+      icon: Icons.hourglass_empty,
+      title: 'Loading',
+      message: message ?? 'Please wait while we load your content',
+      showIcon: true,
+    );
+  }
+}
+
+/// Empty state for no results
 class AppEmptyStateNoResults extends StatelessWidget {
-  final String? searchQuery;
-  final VoidCallback? onRetry;
-  
+  final String searchTerm;
+  final VoidCallback? onClear;
+
   const AppEmptyStateNoResults({
     super.key,
-    this.searchQuery,
-    this.onRetry,
+    required this.searchTerm,
+    this.onClear,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AppEmptyStateWithIcon(
-      title: 'No results found',
-      message: searchQuery != null 
-          ? 'No articles match "$searchQuery"' 
-          : 'Try adjusting your search or filter',
+    return AppEmptyState(
       icon: Icons.search_off,
-      actionText: 'Try again',
-      onActionPressed: onRetry,
+      title: 'No Results',
+      message: 'No articles found for "$searchTerm"',
+      action: onClear != null
+          ? AppButtonSecondary(
+              text: 'Clear Search',
+              onPressed: onClear,
+            )
+          : null,
     );
   }
 }
 
+/// Empty state for no bookmarks
+class AppEmptyStateNoBookmarks extends StatelessWidget {
+  final VoidCallback? onBrowse;
+
+  const AppEmptyStateNoBookmarks({super.key, this.onBrowse});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppEmptyState(
+      icon: Icons.bookmark_border,
+      title: 'No Bookmarks',
+      message: 'Save articles to read later by tapping the bookmark icon',
+      action: onBrowse != null
+          ? AppButtonSecondary(
+              text: 'Browse Articles',
+              onPressed: onBrowse,
+            )
+          : null,
+    );
+  }
+}
+
+/// Empty state for no highlights
+class AppEmptyStateNoHighlights extends StatelessWidget {
+  final VoidCallback? onBrowse;
+
+  const AppEmptyStateNoHighlights({super.key, this.onBrowse});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppEmptyState(
+      icon: Icons.highlight_alt,
+      title: 'No Highlights',
+      message: 'Start highlighting text in articles to save your favorite quotes',
+      action: onBrowse != null
+          ? AppButtonSecondary(
+              text: 'Browse Articles',
+              onPressed: onBrowse,
+            )
+          : null,
+    );
+  }
+}
+
+/// Empty state for no articles
 class AppEmptyStateNoArticles extends StatelessWidget {
-  final bool isCurrentUser;
-  final VoidCallback? onCreateArticle;
-  
+  final VoidCallback? onCreate;
+  final bool isAuthenticated;
+
   const AppEmptyStateNoArticles({
     super.key,
-    this.isCurrentUser = false,
-    this.onCreateArticle,
+    this.onCreate,
+    this.isAuthenticated = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (isCurrentUser) {
-      return AppEmptyStateWithIcon(
-        title: 'No articles yet',
-        message: 'Start writing your first article to share with the world',
-        icon: Icons.article_outlined,
-        actionText: 'Write article',
-        onActionPressed: onCreateArticle,
+    if (isAuthenticated && onCreate != null) {
+      return AppEmptyState(
+        icon: Icons.edit_outlined,
+        title: 'No Articles Yet',
+        message: 'Start writing your first story',
+        action: AppButton(
+          text: 'Write Article',
+          onPressed: onCreate,
+        ),
       );
     }
-    
-    return AppEmptyStateWithIcon(
-      title: 'No articles',
-      message: 'This user has not published any articles yet',
+
+    return AppEmptyState(
       icon: Icons.article_outlined,
+      title: 'No Articles',
+      message: 'There are no articles to display',
     );
   }
 }
 
+/// Empty state for no comments
 class AppEmptyStateNoComments extends StatelessWidget {
-  final bool isCurrentUser;
-  final VoidCallback? onCreateComment;
-  
-  const AppEmptyStateNoComments({
-    super.key,
-    this.isCurrentUser = false,
-    this.onCreateComment,
-  });
+  final VoidCallback? onAddComment;
+
+  const AppEmptyStateNoComments({super.key, this.onAddComment});
 
   @override
   Widget build(BuildContext context) {
-    if (isCurrentUser) {
-      return AppEmptyStateWithIcon(
-        title: 'No comments yet',
-        message: 'Be the first to comment on this article',
-        icon: Icons.comment_outlined,
-        actionText: 'Add comment',
-        onActionPressed: onCreateComment,
-      );
-    }
-    
-    return AppEmptyStateWithIcon(
-      title: 'No comments',
-      message: 'No one has commented on this article yet',
+    return AppEmptyState(
       icon: Icons.comment_outlined,
+      title: 'No Comments Yet',
+      message: 'Be the first to comment on this article',
+      action: onAddComment != null
+          ? AppButton(
+              text: 'Add Comment',
+              onPressed: onAddComment,
+            )
+          : null,
     );
   }
 }
 
-class AppEmptyStateError extends StatelessWidget {
-  final String? message;
-  final VoidCallback? onRetry;
-  
-  const AppEmptyStateError({
-    super.key,
-    this.message,
-    this.onRetry,
-  });
+/// Empty state for no notifications
+class AppEmptyStateNoNotifications extends StatelessWidget {
+  const AppEmptyStateNoNotifications({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return AppEmptyStateWithIcon(
-      title: 'Something went wrong',
-      message: message ?? 'We couldn\'t load the content. Please try again.',
-      icon: Icons.error_outline,
-      iconColor: AppColors.error,
-      actionText: 'Try again',
-      onActionPressed: onRetry,
+    return AppEmptyState(
+      icon: Icons.notifications_none,
+      title: 'No New Notifications',
+      message: 'You will see notifications here when you receive them',
     );
   }
 }
 
-class AppEmptyStateNetworkError extends StatelessWidget {
-  final VoidCallback? onRetry;
-  
-  const AppEmptyStateNetworkError({
-    super.key,
-    this.onRetry,
-  });
+/// Empty state for no followers
+class AppEmptyStateNoFollowers extends StatelessWidget {
+  const AppEmptyStateNoFollowers({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return AppEmptyStateWithIcon(
-      title: 'No connection',
-      message: 'Check your internet connection and try again',
-      icon: Icons.wifi_off,
-      iconColor: AppColors.grey,
-      actionText: 'Retry',
-      onActionPressed: onRetry,
+    return AppEmptyState(
+      icon: Icons.people_outline,
+      title: 'No Followers Yet',
+      message: 'Your followers will appear here',
+    );
+  }
+}
+
+/// Empty state for no following
+class AppEmptyStateNoFollowing extends StatelessWidget {
+  final VoidCallback? onDiscover;
+
+  const AppEmptyStateNoFollowing({super.key, this.onDiscover});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppEmptyState(
+      icon: Icons.person_add_outlined,
+      title: 'Not Following Anyone',
+      message: 'Start following writers to see their articles in your feed',
+      action: onDiscover != null
+          ? AppButtonSecondary(
+              text: 'Discover Writers',
+              onPressed: onDiscover,
+            )
+          : null,
     );
   }
 }

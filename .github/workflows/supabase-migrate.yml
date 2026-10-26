@@ -1,0 +1,61 @@
+name: Supabase Migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Migration action'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - apply
+          - reset
+          - version
+
+jobs:
+  migrate:
+    name: Run Supabase Migrations
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install Supabase CLI
+        run: npm install -g supabase@latest
+        
+      - name: Configure Supabase
+        run: |
+          mkdir -p ~/.supabase
+          echo '${{ secrets.SUPABASE_CONFIG }}' > ~/.supabase/config.toml
+          echo '${{ secrets.SUPABASE_DB_PASSWORD }}' > supabase_db_password.txt
+        
+      - name: Link Supabase Project
+        run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID }} --password-file supabase_db_password.txt
+        
+      - name: Run migration action
+        run: |
+          case "${{ inputs.action }}" in
+            apply)
+              supabase db push --db-password-file supabase_db_password.txt
+              ;;
+            reset)
+              supabase db reset --db-password-file supabase_db_password.txt
+              ;;
+            version)
+              supabase migration list
+              ;;
+          esac
+          
+      - name: Clean up
+        if: always()
+        run: rm -f supabase_db_password.txt

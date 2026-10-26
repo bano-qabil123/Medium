@@ -15,7 +15,7 @@ generated_plugin_registrant.dart
 .env.*.local
 
 # Supabase
-supabase/
+# supabase/
 
 # Flutter
 *.jks

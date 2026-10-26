@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart' as fs;
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:medium_clone/data/models/user_model.dart';
 
@@ -15,10 +14,10 @@ class CommentModel with _$CommentModel {
     String? parentId,
     required String content,
     @Default('pending') String status,
-    @Default(0) int likesCount,
-    @Default(false) bool isLiked,
-    @fs.Timestamp() DateTime? createdAt,
-    @fs.Timestamp() DateTime? updatedAt,
+    @Default(0) int clapsCount,
+    @Default(false) bool isClapped,
+    DateTime? createdAt,
+    DateTime? updatedAt,
     @Default([]) List<CommentModel> replies,
   }) = _CommentModel;
 
@@ -34,8 +33,8 @@ class CommentModel with _$CommentModel {
       parentId: json['parent_id'] as String?,
       content: json['content'] as String? ?? '',
       status: json['status'] as String? ?? 'pending',
-      likesCount: json['likes_count'] as int? ?? 0,
-      isLiked: json['is_liked'] as bool? ?? false,
+      clapsCount: json['claps_count'] as int? ?? 0,
+      isClapped: json['is_clapped'] as bool? ?? false,
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at'] as String) 
           : null,
@@ -55,7 +54,7 @@ class CommentModel with _$CommentModel {
       'parent_id': parentId,
       'content': content,
       'status': status,
-      'likes_count': likesCount,
+      'claps_count': clapsCount,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
     };

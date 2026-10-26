@@ -7,18 +7,20 @@ class ApiConstants {
   static const String profilesTable = 'profiles';
   static const String articlesTable = 'articles';
   static const String commentsTable = 'comments';
-  static const String likesTable = 'likes';
+  static const String clapsTable = 'claps';
   static const String bookmarksTable = 'bookmarks';
-  static const String followsTable = 'follows';
+  static const String highlightsTable = 'highlights';
+  static const String userFollowsTable = 'user_follows';
   static const String tagsTable = 'tags';
   static const String articleTagsTable = 'article_tags';
-  static const String notificationsTable = 'notifications';
-  static const String viewsTable = 'views';
+  static const String userFollowedTagsTable = 'user_followed_tags';
+  static const String articleViewsTable = 'article_views';
+  static const String draftsTable = 'drafts';
   
-  // Storage paths
-  static const String avatarStoragePath = 'avatars';
-  static const String coverStoragePath = 'covers';
-  static const String attachmentStoragePath = 'attachments';
+  // Storage buckets
+  static const String avatarsBucket = 'avatars';
+  static const String coversBucket = 'covers';
+  static const String attachmentsBucket = 'attachments';
   
   // RLS Policies
   static const String publicReadPolicy = 'Public read access';

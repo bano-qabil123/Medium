@@ -1,19 +1,24 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/validators.dart';
-import '../../providers/article_provider.dart';
-import '../../widgets/common/app_button.dart';
-import '../../widgets/common/app_text_field.dart';
-import '../../widgets/common/app_loading.dart';
-import '../../widgets/layout/main_layout.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:medium_clone/core/theme/app_theme.dart';
+import 'package:medium_clone/core/utils/validators.dart';
+import 'package:medium_clone/presentation/providers/article_provider.dart';
+import 'package:medium_clone/presentation/providers/auth_provider.dart';
+import 'package:medium_clone/presentation/widgets/common/app_button.dart';
+import 'package:medium_clone/presentation/widgets/common/app_text_field.dart';
+import 'package:medium_clone/presentation/widgets/common/app_loading.dart';
+import 'package:medium_clone/presentation/widgets/common/app_chip.dart';
+import 'package:medium_clone/presentation/widgets/layout/main_layout.dart';
 
-/// Optimized article editor with proper state management
+/// Advanced article editor with image upload and auto-save
 class ArticleEditorPage extends ConsumerStatefulWidget {
   final String? articleId;
-  
+
   const ArticleEditorPage({super.key, this.articleId});
 
   @override
@@ -23,24 +28,87 @@ class ArticleEditorPage extends ConsumerStatefulWidget {
 class _ArticleEditorPageState extends ConsumerState<ArticleEditorPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
+  final _excerptController = TextEditingController();
+  final _tagsController = TextEditingController();
   late QuillController _quillController;
   
   bool _isLoading = false;
+  bool _isSaving = false;
+  bool _isPublishing = false;
   String? _errorMessage;
   ArticleModel? _article;
+  String? _coverImagePath;
   
+  // Auto-save timer
+  final Duration _autoSaveInterval = const Duration(minutes: 1);
+  Timer? _autoSaveTimer;
+  DateTime? _lastSaveTime;
+
   @override
   void initState() {
     super.initState();
     _quillController = QuillController.basic();
     _loadArticle();
+    _startAutoSave();
   }
 
   @override
   void dispose() {
     _titleController.dispose();
+    _excerptController.dispose();
+    _tagsController.dispose();
     _quillController.dispose();
+    _autoSaveTimer?.cancel();
     super.dispose();
+  }
+
+  void _startAutoSave() {
+    _autoSaveTimer = Timer.periodic(_autoSaveInterval, (timer) {
+      _autoSave();
+    });
+  }
+
+  Future<void> _autoSave() async {
+    if (_isSaving || _isPublishing) return;
+    
+    final hasChanges = _hasUnsavedChanges();
+    if (!hasChanges) return;
+    
+    setState(() => _isSaving = true);
+    
+    try {
+      final user = ref.read(currentUserProvider).valueOrNull;
+      if (user == null) return;
+      
+      await ref.read(articleControllerProvider.notifier).saveDraft(
+        articleId: widget.articleId,
+        title: _titleController.text.trim(),
+        excerpt: _excerptController.text.trim(),
+        content: _quillController.document.toPlainText(),
+        coverImage: _coverImagePath,
+        tags: _parseTags(_tagsController.text),
+      );
+      
+      setState(() {
+        _isSaving = false;
+        _lastSaveTime = DateTime.now();
+      });
+    } catch (e) {
+      setState(() => _isSaving = false);
+    }
+  }
+
+  bool _hasUnsavedChanges() {
+    if (_article == null) {
+      return _titleController.text.isNotEmpty || 
+             _quillController.document.length > 1;
+    }
+    
+    return _titleController.text != _article!.title ||
+           _excerptController.text != (_article!.excerpt ?? '') ||
+           _quillController.document.toPlainText() != _article!.content ||
+           _coverImagePath != _article!.coverImageUrl ||
+           _tagsController.text != (_article!.tags.join(', '));
   }
 
   Future<void> _loadArticle() async {
@@ -51,6 +119,9 @@ class _ArticleEditorPageState extends ConsumerState<ArticleEditorPage> {
         setState(() {
           _article = article;
           _titleController.text = article.title;
+          _excerptController.text = article.excerpt ?? '';
+          _tagsController.text = article.tags.join(', ');
+          _coverImagePath = article.coverImageUrl;
           _quillController.document = Document.fromJson(article.content);
         });
       } catch (e) {
@@ -69,7 +140,7 @@ class _ArticleEditorPageState extends ConsumerState<ArticleEditorPage> {
     }
     
     setState(() {
-      _isLoading = true;
+      _isPublishing = true;
       _errorMessage = null;
     });
     
@@ -80,14 +151,20 @@ class _ArticleEditorPageState extends ConsumerState<ArticleEditorPage> {
           articleId: widget.articleId!,
           title: _titleController.text.trim(),
           content: _quillController.document.toPlainText(),
+          excerpt: _excerptController.text.trim(),
+          coverImage: _coverImagePath,
           status: 'published',
+          tags: _parseTags(_tagsController.text),
         );
       } else {
         // Create new article
         await ref.read(articleControllerProvider.notifier).createArticle(
           title: _titleController.text.trim(),
           content: _quillController.document.toPlainText(),
+          excerpt: _excerptController.text.trim(),
+          coverImage: _coverImagePath,
           status: 'published',
+          tags: _parseTags(_tagsController.text),
         );
       }
       
@@ -98,238 +175,391 @@ class _ArticleEditorPageState extends ConsumerState<ArticleEditorPage> {
     } catch (e) {
       setState(() => _errorMessage = e.toString().replaceAll('Exception:', '').trim());
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      setState(() => _isPublishing = false);
     }
   }
 
   Future<void> _handleSaveDraft() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formFormKey.currentState!.validate()) return;
     
     setState(() {
-      _isLoading = true;
+      _isSaving = true;
       _errorMessage = null;
     });
     
     try {
-      if (widget.articleId != null) {
-        // Update existing article as draft
-        await ref.read(articleControllerProvider.notifier).updateArticle(
-          articleId: widget.articleId!,
-          title: _titleController.text.trim(),
-          content: _quillController.document.toPlainText(),
-          status: 'draft',
-        );
-      } else {
-        // Create new article as draft
-        await ref.read(articleControllerProvider.notifier).createArticle(
-          title: _titleController.text.trim(),
-          content: _quillController.document.toPlainText(),
-          status: 'draft',
-        );
-      }
+      await ref.read(articleControllerProvider.notifier).saveDraft(
+        articleId: widget.articleId,
+        title: _titleController.text.trim(),
+        content: _quillController.document.toPlainText(),
+        excerpt: _excerptController.text.trim(),
+        coverImage: _coverImagePath,
+        tags: _parseTags(_tagsController.text),
+      );
       
-      // Navigate to home on success
-      if (mounted) {
-        context.go('/');
+      setState(() {
+        _isSaving = false;
+        _lastSaveTime = DateTime.now();
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Draft saved!')),
+      );
+    } catch (e) {
+      setState(() {
+        _isSaving = false;
+        _errorMessage = e.toString().replaceAll('Exception:', '').trim();
+      });
+    }
+  }
+
+  Future<void> _pickCoverImage() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      
+      if (pickedFile != null) {
+        // For now, just store the path
+        // In production, you would upload to Supabase Storage
+        setState(() => _coverImagePath = pickedFile.path);
       }
     } catch (e) {
-      setState(() => _errorMessage = e.toString().replaceAll('Exception:', '').trim());
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error picking image: ${e.toString()}')),
+      );
     }
+  }
+
+  Future<void> _removeCoverImage() async {
+    setState(() => _coverImagePath = null);
+  }
+
+  List<String> _parseTags(String text) {
+    return text
+        .split(',')
+        .map((tag) => tag.trim().toLowerCase())
+        .where((tag) => tag.isNotEmpty)
+        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return MainLayout(
+        title: widget.articleId != null ? 'Edit Article' : 'New Article',
+        child: const Center(child: AppLoading()),
+      );
+    }
+
     return MainLayout(
-      key: ValueKey('editor-${widget.articleId}'),
       title: widget.articleId != null ? 'Edit Article' : 'New Article',
       showBackButton: true,
       actions: [
-        if (widget.articleId != null)
-          TextButton(
-            onPressed: () {
-              // TODO: Show delete confirmation
-            },
-            child: Text(
-              'Delete',
-              style: AppTypography.bodySmall.copyWith(
-                color: AppColors.error,
+        // Auto-save indicator
+        if (_lastSaveTime != null)
+          Padding(
+            padding: const EdgeInsets.only(right: AppDimensions.paddingSmall),
+            child: Center(
+              child: Text(
+                'Saved ${_formatTimeAgo(_lastSaveTime!)}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
+            ),
+          ),
+        if (_isSaving)
+          const Padding(
+            padding: EdgeInsets.only(right: AppDimensions.paddingSmall),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
             ),
           ),
       ],
       child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                // Title - Use const padding
-                const SizedBox(height: 8),
-                AppTextField(
-                  controller: _titleController,
-                  labelText: 'Title',
-                  hintText: 'Enter article title',
-                  validator: (value) => Validators.validateArticleTitle(value),
-                  autofocus: true,
-                  textInputAction: TextInputAction.next,
+        padding: const EdgeInsets.all(AppDimensions.paddingMedium),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Cover image
+              _buildCoverImageSection(),
+              const SizedBox(height: AppDimensions.spacingLarge),
+              
+              // Title
+              Text(
+                'Title',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
-                
-                const SizedBox(height: 16),
-                
-                // Cover Image placeholder
-                _buildCoverImagePlaceholder(context),
-                
-                const SizedBox(height: 24),
-                
-                // Editor with RepaintBoundary
-                RepaintBoundary(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: BorderSide(color: AppColors.border, width: 1),
-                    ),
-                    child: Column(
-                      children: [
-                        // Toolbar with const constructors
-                        const _EditorToolbar(),
-                        
-                        // Editor
-                        Container(
-                          constraints: const BoxConstraints(
-                            minHeight: 250,
-                          ),
-                          padding: const EdgeInsets.all(16),
-                          child: QuillEditor(
-                            controller: _quillController,
-                            readOnly: false,
-                            autoFocus: false,
-                            expands: false,
-                            padding: EdgeInsets.zero,
-                            placeholder: 'Start writing...',
-                            style: DefaultTextBlockStyle(
-                              TextStyle(
-                                fontSize: AppTypography.bodyLarge.fontSize,
-                                color: AppColors.onSurface,
-                                height: 1.6,
-                              ),
-                              const TextStyle(),
-                              const TextStyle(),
-                              const TextStyle(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+              ),
+              const SizedBox(height: AppDimensions.spacingSmall),
+              AppTextField(
+                controller: _titleController,
+                hintText: 'Enter article title',
+                validator: (value) => Validators.validateRequired(value, 'Title'),
+                maxLength: 120,
+              ),
+              const SizedBox(height: AppDimensions.spacingLarge),
+              
+              // Excerpt
+              Text(
+                'Excerpt (Optional)',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
-                
-                if (_errorMessage != null) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    _errorMessage!,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.error,
-                    ),
+              ),
+              const SizedBox(height: AppDimensions.spacingSmall),
+              AppTextField(
+                controller: _excerptController,
+                hintText: 'Short description (160 characters max)',
+                maxLines: 3,
+                maxLength: 160,
+              ),
+              const SizedBox(height: AppDimensions.spacingLarge),
+              
+              // Tags
+              Text(
+                'Tags (Optional)',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: AppDimensions.spacingSmall),
+              AppTextField(
+                controller: _tagsController,
+                hintText: 'Enter tags separated by commas (e.g., flutter, dart, programming)',
+                maxLines: 1,
+              ),
+              const SizedBox(height: AppDimensions.spacingSmall),
+              // Tag suggestions
+              if (_tagsController.text.isNotEmpty) ...[
+                Wrap(
+                  spacing: AppDimensions.spacingXSmall,
+                  runSpacing: AppDimensions.spacingXSmall,
+                  children: _parseTags(_tagsController.text)
+                      .map((tag) => AppChip(
+                            label: tag,
+                            onPressed: () {
+                              // Remove tag
+                              final tags = _parseTags(_tagsController.text);
+                              tags.remove(tag);
+                              _tagsController.text = tags.join(', ');
+                            },
+                          ))
+                      .toList(),
+                ),
+                const SizedBox(height: AppDimensions.spacingSmall),
+              ],
+              
+              const SizedBox(height: AppDimensions.spacingLarge),
+              
+              // Content Editor
+              Text(
+                'Content',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: AppDimensions.spacingSmall),
+              
+              // Quill Editor
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
                   ),
-                ],
-                
-                const SizedBox(height: 32),
-                
-                // Action Buttons
-                Row(
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
+                ),
+                child: Column(
                   children: [
-                    Expanded(
-                      child: AppButtonSecondary(
-                        text: 'Save Draft',
-                        onPressed: _isLoading ? null : _handleSaveDraft,
-                        isLoading: _isLoading,
-                      ),
+                    // Toolbar
+                    QuillToolbar.basic(
+                      controller: _quillController,
+                      showDividers: false,
+                      showAlignmentButtons: true,
+                      showListNumbers: true,
+                      showListBullets: true,
+                      showCodeBlock: true,
+                      showQuote: true,
+                      showLink: true,
+                      showImageButton: false, // We handle images separately
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: AppButton(
-                        text: widget.articleId != null ? 'Update' : 'Publish',
-                        onPressed: _isLoading ? null : _handlePublish,
-                        isLoading: _isLoading,
+                    
+                    // Editor
+                    Container(
+                      height: 400,
+                      padding: const EdgeInsets.all(AppDimensions.paddingSmall),
+                      child: QuillEditor(
+                        controller: _quillController,
+                        readOnly: false,
+                        autoFocus: false,
+                        expands: false,
+                        padding: EdgeInsets.zero,
+                        embedBuilders: [
+                          // Add custom embed builders for images, etc.
+                        ],
                       ),
                     ),
                   ],
                 ),
-                
-                const SizedBox(height: 16),
+              ),
+              
+              const SizedBox(height: AppDimensions.spacingLarge),
+              
+              // Error message
+              if (_errorMessage != null) ...[
+                Text(
+                  _errorMessage!,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.error,
+                  ),
+                ),
+                const SizedBox(height: AppDimensions.spacingMedium),
               ],
-            ),
+              
+              // Actions
+              Row(
+                children: [
+                  Expanded(
+                    child: AppButtonSecondary(
+                      text: 'Save Draft',
+                      onPressed: _isSaving ? null : _handleSaveDraft,
+                      loading: _isSaving,
+                    ),
+                  ),
+                  const SizedBox(width: AppDimensions.spacingMedium),
+                  Expanded(
+                    child: AppButton(
+                      text: widget.articleId != null ? 'Update' : 'Publish',
+                      onPressed: _isPublishing ? null : _handlePublish,
+                      loading: _isPublishing,
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: AppDimensions.spacingLarge),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildCoverImagePlaceholder(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: 200,
-      decoration: BoxDecoration(
-        color: AppColors.greyLight,
-        borderRadius: BorderRadius.circular(12),
-        border: BorderSide(color: AppColors.border, width: 1),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.image_outlined,
-              size: 40,
-              color: AppColors.grey,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Add Cover Image',
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.grey,
+  Widget _buildCoverImageSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Cover Image (Optional)',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: AppDimensions.spacingSmall),
+        
+        // Cover image preview or upload button
+        if (_coverImagePath != null) ...[
+          Stack(
+            alignment: Alignment.topRight,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
+                child: Image.file(
+                  File(_coverImagePath!),
+                  height: 200,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              // Remove button
+              Container(
+                margin: const EdgeInsets.all(AppDimensions.paddingSmall),
+                decoration: BoxDecoration(
+                  color: AppColors.error,
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.close, size: AppDimensions.iconSmall),
+                  color: AppColors.onPrimary,
+                  onPressed: _removeCoverImage,
+                  padding: EdgeInsets.zero,
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(AppDimensions.buttonHeightSmall, AppDimensions.buttonHeightSmall),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppDimensions.spacingSmall),
+          AppButtonSecondary(
+            text: 'Change Image',
+            onPressed: _pickCoverImage,
+            fullWidth: false,
+          ),
+        ] else ...[
+          // Upload button
+          Container(
+            height: 200,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceVariant,
+              borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outlineVariant,
+                style: BorderStyle.solid,
               ),
             ),
-          ],
-        ),
-      ),
+            child: InkWell(
+              onTap: _pickCoverImage,
+              borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.add_photo_alternate_outlined,
+                    size: AppDimensions.iconXLarge,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: AppDimensions.spacingSmall),
+                  Text(
+                    'Add Cover Image',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: AppDimensions.spacingXSmall),
+                  Text(
+                    'Recommended: 1200x600 pixels',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
-}
 
-/// Editor toolbar with const constructors
-class _EditorToolbar extends StatelessWidget {
-  const _EditorToolbar({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return QuillToolbar.basic(
-      controller: QuillController.basic(),
-      multiRowsDisplay: false,
-      showAlignmentButtons: true,
-      showListNumbers: true,
-      showListBullets: true,
-      showListCheck: true,
-      showCodeBlock: true,
-      showQuote: true,
-      showLink: true,
-      showImage: false,
-      toolbarIconAlignment: WrapAlignment.start,
-      color: AppColors.primary,
-      iconTheme: QuillIconTheme(
-        iconSelectedColor: AppColors.primary,
-        iconUnselectedColor: AppColors.grey,
-        iconSelectedFillColor: AppColors.primary.withOpacity(0.1),
-        iconUnselectedFillColor: Colors.transparent,
-      ),
-    );
+  String _formatTimeAgo(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+    
+    if (difference.inSeconds < 60) {
+      return 'just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else {
+      return '${difference.inDays}d ago';
+    }
   }
 }

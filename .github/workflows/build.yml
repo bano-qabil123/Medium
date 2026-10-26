@@ -1,0 +1,78 @@
+name: Build
+
+on:
+  push:
+    branches: [ main, perf/ui-smoothness, initial-clone ]
+  pull_request:
+    branches: [ main, perf/ui-smoothness ]
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux
+            command: flutter build linux
+            artifact: build/linux/x64/release/bundle
+            artifact-name: medium-linux
+            
+          - os: ubuntu-latest
+            target: apk
+            command: flutter build apk --release
+            artifact: build/app/outputs/flutter-apk/app-release.apk
+            artifact-name: medium-android-apk
+            
+          - os: ubuntu-latest
+            target: appbundle
+            command: flutter build appbundle --release
+            artifact: build/app/outputs/bundle/release/app-release.aab
+            artifact-name: medium-android-appbundle
+            
+          - os: macos-latest
+            target: ios
+            command: flutter build ios --release --no-codesign
+            artifact: build/ios/iphoneos
+            artifact-name: medium-ios
+            
+          - os: ubuntu-latest
+            target: web
+            command: flutter build web --release
+            artifact: build/web
+            artifact-name: medium-web
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.5'
+          channel: 'stable'
+          cache: true
+          
+      - name: Get dependencies
+        run: flutter pub get
+        
+      - name: Generate code
+        run: flutter pub run build_runner build --delete-conflicting-outputs || true
+        
+      - name: Build ${{ matrix.target }}
+        run: ${{ matrix.command }}
+        
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact }}
+          retention-days: 7
+          
+      - name: Clean up (iOS)
+        if: matrix.target == 'ios'
+        run: rm -rf build/ios/iphoneos/Pods build/ios/iphoneos/Runner.app.dSYM
